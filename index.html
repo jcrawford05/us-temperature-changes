@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Global Temperature Changes — Milestone</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Global Temperature Changes (U.S.)</h1>
+    <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+  </header>
+
+  <main class="layout">
+    <section class="controls">
+      <label for="year">
+        <span>Year:</span>
+        <strong id="year-label">2000</strong>
+      </label>
+      <input type="range" id="year" min="1900" max="2020" step="1" value="2000" />
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="viz">
+      <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+      <svg id="map" width="980" height="600" role="img" aria-label="U.S. temperature map"></svg>
+    </section>
+
+    <!-- NEW: focused state-only view -->
+    <section class="state-viz">
+      <h2 id="state-title">Click a state to open its focused view</h2>
+      <svg id="stateview" width="980" height="320" role="img" aria-label="Focused state view"></svg>
+    </section>
+
+    <section class="detail">
+      <h2 id="detail-title">Click a state to see its trend</h2>
+      <svg id="linechart" width="980" height="300" role="img" aria-label="State temperature trend"></svg>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year averages for the final.</p>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>
+

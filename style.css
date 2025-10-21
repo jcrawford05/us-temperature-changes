@@ -1,0 +1,56 @@
+:root {
+  --bg: #0f172a;
+  --card: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #22d3ee;
+  --border: #1f2937;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+
+.app-header { padding: 24px 16px; border-bottom: 1px solid var(--border); }
+.app-header h1 { margin: 0 0 6px; font-weight: 700; }
+.app-header .sub { margin: 0; color: var(--muted); }
+
+.layout { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+
+.controls {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; display: grid; gap: 12px;
+}
+.controls label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.controls input[type="range"] { width: 320px; }
+.legend { height: 36px; display: flex; align-items: center; gap: 8px; }
+
+.viz, .state-viz, .detail {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px;
+}
+
+.state-viz h2, .detail h2 {
+  margin: 4px 8px 8px; font-size: 18px; color: var(--muted); font-weight: 500;
+}
+
+#map, #stateview, #linechart { width: 100%; height: auto; display: block; }
+
+.state { stroke: #0b1022; stroke-width: 1px; cursor: pointer; }
+.state:hover { stroke: var(--accent); stroke-width: 1.5px; }
+
+.tooltip {
+  position: absolute; pointer-events: none;
+  background: #111827cc; color: var(--text);
+  padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 12px; backdrop-filter: blur(4px);
+}
+
+.axis path, .axis line { stroke: #2a3557; }
+.axis text { fill: var(--muted); font-size: 12px; }
+
+.app-footer { color: var(--muted); text-align: center; padding: 12px 16px 24px; }
+
