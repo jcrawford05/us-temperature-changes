@@ -1,64 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Global Temperature Changes — Milestone</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+    <title>Global Temperature Changes — Milestone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <header class="app-header">
+<header class="app-header">
     <h1>Global Temperature Changes (U.S.)</h1>
     <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
-  </header>
+</header>
 
-  <main class="layout">
+<main class="layout">
     <section class="controls">
-      <label for="year">
-        <span>Year:</span>
-        <strong id="year-label">2000</strong>
-      </label>
-      <input type="range" id="year" min="1900" max="2020" step="1" value="2000" />
-      
-      <div class="unit-toggle">
-        <label for="unit-toggle">
-          <span>Temperature Unit:</span>
-          <div class="toggle-container">
-            <span id="unit-label">°F</span>
-            <label class="switch">
-              <input type="checkbox" id="unit-toggle" />
-              <span class="slider"></span>
-            </label>
-          </div>
+        <label for="year">
+            <span>Date:</span>
+            <strong id="year-label">2000</strong>
         </label>
-      </div>
-      
-      <div class="legend" id="legend"></div>
+        <input type="range" id="year" min="1800" max="2020" step="1" value="2000" />
+
+        <div class="unit-toggle">
+            <label for="unit-toggle">
+                <span>Temperature Unit:</span>
+                <div class="toggle-container">
+                    <span id="unit-label">°F</span>
+                    <label class="switch">
+                        <input type="checkbox" id="unit-toggle" />
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </label>
+        </div>
+
+        <div class="data-toggle">
+            <label for="data-toggle">
+                <span>Data View:</span>
+                <select id="data-toggle">
+                    <option value="yearly" selected>Yearly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="legend" id="legend"></div>
     </section>
 
     <section class="viz">
-      <div id="tooltip" class="tooltip" style="opacity:0;"></div>
-      <svg id="map" width="980" height="600" role="img" aria-label="U.S. temperature map"></svg>
+        <div id="tooltip" class="tooltip" style="opacity:0;"></div>
+        <svg id="map" width="980" height="600" role="img" aria-label="U.S. temperature map"></svg>
     </section>
 
     <section class="info">
-      <h2>How to Use</h2>
-      <p>Click on any state in the map above to view detailed temperature analysis for that state, including:</p>
-      <ul>
-        <li>Large-scale state view with current temperature</li>
-        <li>Historical temperature trends over time</li>
-        <li>Interactive year slider to explore different time periods</li>
-      </ul>
+        <h2>How to Use</h2>
+        <p>Use the dropdown to switch between yearly and monthly average temperatures.
+            Slide the timeline to explore how average temperatures change across years or months.</p>
     </section>
-  </main>
+</main>
 
-  <footer class="app-footer">
-    <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year averages for the final.</p>
-  </footer>
+<footer class="app-footer">
+    <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year/month averages for the final.</p>
+</footer>
 
-  <script src="script.js?v=2"></script>
+<script src="./script.js?v=3"></script>
 </body>
 </html>
-
