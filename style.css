@@ -1,17 +1,17 @@
 :root {
-  --bg: #0f172a;
-  --card: #111827;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #22d3ee;
-  --border: #1f2937;
+    --bg: #0f172a;
+    --card: #111827;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #22d3ee;
+    --border: #1f2937;
 }
 
 * { box-sizing: border-box; }
 html, body {
-  margin: 0; padding: 0;
-  background: var(--bg); color: var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
 }
 
 .app-header { padding: 24px 16px; border-bottom: 1px solid var(--border); }
@@ -21,20 +21,77 @@ html, body {
 .layout { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
 
 .controls {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px; display: grid; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; display: grid; gap: 12px;
 }
 .controls label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .controls input[type="range"] { width: 320px; }
 .legend { height: 36px; display: flex; align-items: center; gap: 8px; }
 
+.unit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border);
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text);
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--accent);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
 .viz, .state-viz, .detail {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px;
 }
 
 .state-viz h2, .detail h2 {
-  margin: 4px 8px 8px; font-size: 18px; color: var(--muted); font-weight: 500;
+    margin: 4px 8px 8px; font-size: 18px; color: var(--muted); font-weight: 500;
 }
 
 #map, #stateview, #linechart { width: 100%; height: auto; display: block; }
@@ -43,10 +100,10 @@ html, body {
 .state:hover { stroke: var(--accent); stroke-width: 1.5px; }
 
 .tooltip {
-  position: absolute; pointer-events: none;
-  background: #111827cc; color: var(--text);
-  padding: 8px 10px; border: 1px solid var(--border);
-  border-radius: 8px; font-size: 12px; backdrop-filter: blur(4px);
+    position: absolute; pointer-events: none;
+    background: #111827cc; color: var(--text);
+    padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 12px; backdrop-filter: blur(4px);
 }
 
 .axis path, .axis line { stroke: #2a3557; }
@@ -54,3 +111,70 @@ html, body {
 
 .app-footer { color: var(--muted); text-align: center; padding: 12px 16px 24px; }
 
+/* State page specific styles */
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.back-button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    background: var(--border);
+    border-color: var(--accent);
+}
+
+.state-detail {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.state-detail h2 {
+    margin: 4px 8px 8px;
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.info {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.info h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.info p {
+    margin: 0 0 12px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.info ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text);
+}
+
+.info li {
+    margin-bottom: 6px;
+    line-height: 1.4;
+}

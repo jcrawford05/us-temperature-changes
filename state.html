@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Global Temperature Changes — Milestone</title>
+  <title id="page-title">State Temperature View — Milestone</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
@@ -10,8 +10,13 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>Global Temperature Changes (U.S.)</h1>
-    <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+    <div class="header-content">
+      <button id="back-btn" class="back-button">← Back to Map</button>
+      <div class="header-text">
+        <h1 id="state-header">State Temperature View</h1>
+        <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+      </div>
+    </div>
   </header>
 
   <main class="layout">
@@ -38,19 +43,14 @@
       <div class="legend" id="legend"></div>
     </section>
 
-    <section class="viz">
-      <div id="tooltip" class="tooltip" style="opacity:0;"></div>
-      <svg id="map" width="980" height="600" role="img" aria-label="U.S. temperature map"></svg>
+    <section class="state-detail">
+      <h2 id="state-title">Loading state data...</h2>
+      <svg id="stateview" width="980" height="400" role="img" aria-label="Focused state view"></svg>
     </section>
 
-    <section class="info">
-      <h2>How to Use</h2>
-      <p>Click on any state in the map above to view detailed temperature analysis for that state, including:</p>
-      <ul>
-        <li>Large-scale state view with current temperature</li>
-        <li>Historical temperature trends over time</li>
-        <li>Interactive year slider to explore different time periods</li>
-      </ul>
+    <section class="detail">
+      <h2 id="detail-title">Temperature Trend</h2>
+      <svg id="linechart" width="980" height="300" role="img" aria-label="State temperature trend"></svg>
     </section>
   </main>
 
@@ -58,7 +58,6 @@
     <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year averages for the final.</p>
   </footer>
 
-  <script src="./script.js?v=2"></script>
+  <script src="./state-script.js?v=2"></script>
 </body>
 </html>
-
