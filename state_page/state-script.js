@@ -129,7 +129,7 @@ async function init() {
   currentState = getStateFromURL();
   
   if (!currentState) {
-    window.location.href = './index.html';
+    window.location.href = '../index.html';
     return;
   }
 
@@ -161,7 +161,7 @@ async function init() {
   renderLegend(color, document.getElementById("legend"));
 
   backBtn.on("click", () => {
-    window.location.href = './index.html';
+    window.location.href = '../index.html';
   });
 
   unitToggle.addEventListener("change", () => {

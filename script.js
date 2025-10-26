@@ -170,7 +170,7 @@ async function init() {
         .on("click", (event, d) => {
             const name = fixName(d.properties && d.properties.name);
             console.log("Clicked state:", name);
-            window.location.href = `./state.html?state=${encodeURIComponent(name)}`;
+            window.location.href = `state_page/state.html`;
         });
 
     unitToggle.addEventListener("change", () => {
