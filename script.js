@@ -121,21 +121,72 @@ function handleMouseLeave() { tooltip.style("opacity", 0); }
 // Build legend
 function buildLegend() {
     const legend = d3.select("#legend");
-    legend.selectAll("*").remove();
+    legend.selectAll("*").remove(); // clear previous legend
+
+    const width = 320,
+        height = 12;
+    const margin = {
+        top: 10,
+        right: 30,
+        bottom: 28,
+        left: 30 };
+
+    // Choose current scale
     const scale = currentUnit === "F" ? colorScaleF : colorScaleC;
     const [min, max] = scale.domain();
-    const steps = 6;
-    const range = d3.range(min, max, (max - min) / steps);
-    range.forEach(v => {
-        legend.append("div")
-            .style("width", "40px")
-            .style("height", "16px")
-            .style("background", scale(v))
-            .style("display", "inline-block");
+
+    // Create SVG inside the legend div
+    const svgLegend = legend.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+    // Define gradient
+    const defs = svgLegend.append("defs");
+    const gradient = defs.append("linearGradient")
+        .attr("id", "legend-gradient")
+        .attr("x1", "0%")
+        .attr("x2", "100%")
+        .attr("y1", "0%")
+        .attr("y2", "0%");
+
+    // Build continuous color stops
+    const n = 50; // number of stops for smoothness
+    d3.range(n).forEach(i => {
+        gradient.append("stop")
+            .attr("offset", `${(i / (n - 1)) * 100}%`)
+            .attr("stop-color", scale(min + (i / (n - 1)) * (max - min)));
     });
-    legend.append("span")
-        .text(` ${min.toFixed(0)}°${currentUnit} - ${max.toFixed(0)}°${currentUnit}`)
-        .style("margin-left", "8px");
+
+    // Draw gradient rect
+    svgLegend.append("rect")
+        .attr("x", margin.left)
+        .attr("y", margin.top)
+        .attr("width", width)
+        .attr("height", height)
+        .style("fill", "url(#legend-gradient)")
+        .style("stroke", "var(--border)")
+        .style("rx", 4)
+        .style("ry", 4);
+
+    // Legend scale axis
+    const legendScale = d3.scaleLinear()
+        .domain([min, max])
+        .range([margin.left, width + margin.left]);
+
+    const legendAxis = d3.axisBottom(legendScale)
+        .ticks(6)
+        .tickFormat(d => `${d.toFixed(0)}°${currentUnit}`);
+
+    svgLegend.append("g")
+        .attr("class", "legend-axis")
+        .attr("transform", `translate(0, ${height + margin.top})`)
+        .call(legendAxis)
+        .selectAll("text")
+        .style("fill", "var(--muted)")
+        .style("font-size", "12px");
+
+    // Style axis lines
+    svgLegend.selectAll(".domain, .tick line").attr("stroke", "var(--border)");
 }
 
 // Event listeners
