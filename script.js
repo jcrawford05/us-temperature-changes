@@ -16,8 +16,8 @@ const projection = d3.geoAlbersUsa().scale(1200).translate([width / 2, height / 
 const path = d3.geoPath().projection(projection);
 
 // Color scales
-const colorScaleF = d3.scaleSequential().domain([40, 80]).interpolator(d3.interpolateTurbo);
-const colorScaleC = d3.scaleSequential().domain([5, 27]).interpolator(d3.interpolateTurbo);
+const colorScaleF = d3.scaleSequential().domain([0, 100]).interpolator(d3.interpolateTurbo);
+const colorScaleC = d3.scaleSequential().domain([-18, 38]).interpolator(d3.interpolateTurbo);
 
 let mapData, tempData = {}, currentDataset = "yearly";
 let currentUnit = "F";
