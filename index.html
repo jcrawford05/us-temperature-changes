@@ -26,11 +26,12 @@
             <label for="unit-toggle">
                 <span>Temperature Unit:</span>
                 <div class="toggle-container">
-                    <span id="unit-label">°F</span>
+                    <span class="unit-label-left">°F</span>
                     <label class="switch">
                         <input type="checkbox" id="unit-toggle" />
                         <span class="slider"></span>
                     </label>
+                    <span class="unit-label-right">°C</span>
                 </div>
             </label>
         </div>
@@ -38,12 +39,17 @@
         <div class="data-toggle">
             <label for="data-toggle">
                 <span>Data View:</span>
-                <select id="data-toggle">
-                    <option value="yearly" selected>Yearly</option>
-                    <option value="monthly">Monthly</option>
-                </select>
+                <div class="toggle-container">
+                    <span class="data-label-left">Monthly</span>
+                    <label class="switch">
+                        <input type="checkbox" id="data-toggle" />
+                        <span class="slider"></span>
+                    </label>
+                    <span class="data-label-right">Yearly</span>
+                </div>
             </label>
         </div>
+
 
         <div class="legend" id="legend"></div>
     </section>

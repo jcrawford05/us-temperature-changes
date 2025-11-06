@@ -28,10 +28,17 @@ html, body {
 .controls input[type="range"] { width: 320px; }
 .legend { height: 36px; display: flex; align-items: center; gap: 8px; }
 
-.unit-toggle {
+.unit-toggle .toggle-container {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
+}
+
+.unit-toggle span.unit-label-left,
+.unit-toggle span.unit-label-right {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .toggle-container {
@@ -51,6 +58,53 @@ html, body {
     opacity: 0;
     width: 0;
     height: 0;
+}
+
+/* Data view toggle styling (Monthly/Yearly) */
+.data-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.data-toggle .toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.data-toggle span {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+/* ===== Unified styling for both toggles ===== */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Labels next to toggles (°F/°C, Monthly/Yearly) */
+.toggle-container span {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.switch input:checked ~ .unit-label-right,
+.switch input:checked ~ .data-label-right {
+    color: var(--accent);
+}
+.switch input:not(:checked) ~ .unit-label-left,
+.switch input:not(:checked) ~ .data-label-left {
+    color: var(--accent);
+}
+
+/* Remove browser focus outline on the switch */
+.switch input:focus + .slider {
+    box-shadow: 0 0 2px var(--accent);
 }
 
 .slider {

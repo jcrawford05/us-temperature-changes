@@ -9,7 +9,6 @@ const height = +svg.attr("height");
 const yearInput = d3.select("#year");
 const yearLabel = d3.select("#year-label");
 const unitToggle = d3.select("#unit-toggle");
-const unitLabel = d3.select("#unit-label");
 const dataToggle = d3.select("#data-toggle");
 
 // Projection and path
@@ -149,29 +148,32 @@ yearInput.on("input", (event) => {
 
 unitToggle.on("change", (event) => {
     currentUnit = event.target.checked ? "C" : "F";
-    unitLabel.text("°" + currentUnit);
     updateMap(currentValue);
     buildLegend();
 });
 
-dataToggle.on("change", (event) => {
-    currentDataset = event.target.value;
+const dataToggleInput = document.getElementById("data-toggle");
 
+dataToggleInput.addEventListener("change", (event) => {
+    currentDataset = event.target.checked ? "yearly" : "monthly";
+    updateSliderForDataset();
+    updateMap(currentValue);
+});
+
+function updateSliderForDataset() {
     if (currentDataset === "yearly") {
         yearInput.attr("min", 1800).attr("max", 2020).attr("step", 1);
         currentValue = 2000;
         yearInput.property("value", currentValue);
     } else {
-        // Monthly: treat slider as index of months
         const startYear = 1800, endYear = 2020;
         const totalMonths = (endYear - startYear + 1) * 12;
         yearInput.attr("min", 0).attr("max", totalMonths - 1).attr("step", 1);
         yearInput.property("value", 0);
         currentValue = "1-1800";
     }
+}
 
-    updateMap(currentValue);
-});
 
 // Adjust displayed label for monthly view slider movement
 yearInput.on("input", function(event) {
