@@ -63,7 +63,12 @@ function drawMap() {
         .attr("d", path)
         .on("mouseover", handleMouseOver)
         .on("mousemove", handleMouseMove)
-        .on("mouseleave", handleMouseLeave);
+        .on("mouseleave", handleMouseLeave)
+        .on("click", (event, d) => {
+            const stateName = d.properties.name;
+            window.location.href = `state_page/state.html?state=${encodeURIComponent(stateName)}`;
+        });
+
 }
 
 // Update map for selected value

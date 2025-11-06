@@ -32,8 +32,22 @@ const fallbackRows = (() => {
     "Kansas": 52, "Nebraska": 48, "Oklahoma": 58, "Washington": 48, "Oregon": 50,
     "Idaho": 45, "District of Columbia": 55
   };
-  
-  const rows = [];
+
+    // Parse the "state" query parameter from URL
+    const params = new URLSearchParams(window.location.search);
+    const selectedState = params.get("state");
+
+// Update header and title
+    if (selectedState) {
+        document.getElementById("state-header").textContent = `${selectedState} — Temperature View`;
+        document.getElementById("state-title").textContent = `Average Temperatures in ${selectedState}`;
+        document.title = `${selectedState} — State Temperature View`;
+    }
+    document.getElementById("back-btn").addEventListener("click", () => {
+        window.location.href = "../index.html";
+    });
+
+    const rows = [];
   for (const s of states) {
     const baseTemp = baseTemps[s] || 50;
     for (const y of years) {
