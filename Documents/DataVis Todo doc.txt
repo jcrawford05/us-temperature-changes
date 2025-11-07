@@ -1,0 +1,28 @@
+Things to modify/add:
+
+Country Page:
+
+	Avg Temp:
+	- Dynamically change the legend temp range to match the min and max temp for that period
+	- If no data exists, make the tooltip state that no data exists and the color is set to grey
+
+	Delta Temp:
+	- If no data exists, make the tooltip state that no data exists and the color is set to grey
+	- Grey out the Top data slider when the bottom sliders are being used
+	- remove the delta sliders when the delta feature is not being used
+
+State Page:
+	-Fix the null data labels in the primary plot
+	-Fix the primary plot label spacing
+	-Fix the x axis spacing on the line graph
+	-Comparison tool (not looking forward to that)
+	-City Temps page (plot these)
+	
+
+General fixes:
+- add a light mode
+- add dropdowns for:
+	-feature lists
+	-credits (us)
+	-data sources
+	-link to project book
