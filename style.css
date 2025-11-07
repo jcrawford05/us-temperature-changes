@@ -232,3 +232,21 @@ input:checked + .slider:before {
     margin-bottom: 6px;
     line-height: 1.4;
 }
+
+/* Make the plot containers taller and roomier */
+.state-detail,
+.detail {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 480px;
+}
+
+.state-detail svg,
+.detail svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 12px;
+}

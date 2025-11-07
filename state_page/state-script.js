@@ -1,348 +1,304 @@
-const STATE_W = 980, STATE_H = 400;
-const LINE_W = 980, LINE_H = 300;
-const MARGIN = { t: 24, r: 24, b: 40, l: 52 };
+// ==============================
+// State Detail Page Script (Full Updated Version)
+// ==============================
 
-const NAME_FIX = new Map([
-  ["District of Columbia", "District of Columbia"]
-]);
+// --- 1. Get state name from query ---
+const params = new URLSearchParams(window.location.search);
+const selectedState = params.get("state");
 
-const fallbackRows = (() => {
-  const years = d3.range(1900, 2021);
-  const states = [
-    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
-    "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
-    "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
-    "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
-    "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
-    "West Virginia", "Wisconsin", "Wyoming"
-  ];
-  
-  const baseTemps = {
-    "Alaska": 25, "Hawaii": 75, "Florida": 70, "Texas": 62, "California": 58,
-    "Arizona": 60, "Nevada": 55, "New Mexico": 55, "Utah": 46, "Colorado": 45,
-    "Wyoming": 40, "Montana": 42, "North Dakota": 40, "South Dakota": 45,
-    "Minnesota": 40, "Wisconsin": 42, "Michigan": 45, "Maine": 42, "Vermont": 42,
-    "New Hampshire": 45, "Massachusetts": 48, "Connecticut": 50, "Rhode Island": 50,
-    "New York": 50, "Pennsylvania": 48, "New Jersey": 52, "Delaware": 54,
-    "Maryland": 54, "Virginia": 55, "West Virginia": 52, "Kentucky": 55,
-    "Tennessee": 58, "North Carolina": 58, "South Carolina": 62, "Georgia": 62,
-    "Alabama": 62, "Mississippi": 62, "Louisiana": 65, "Arkansas": 58,
-    "Missouri": 55, "Iowa": 48, "Illinois": 50, "Indiana": 50, "Ohio": 50,
-    "Kansas": 52, "Nebraska": 48, "Oklahoma": 58, "Washington": 48, "Oregon": 50,
-    "Idaho": 45, "District of Columbia": 55
-  };
+// --- 2. Update page title and header ---
+if (selectedState) {
+    document.getElementById("state-header").textContent = `${selectedState} — Temperature View`;
+    document.getElementById("state-title").textContent = `Average Temperatures in ${selectedState}`;
+    document.title = `${selectedState} — State Temperature View`;
+}
 
-    // Parse the "state" query parameter from URL
-    const params = new URLSearchParams(window.location.search);
-    const selectedState = params.get("state");
+// --- 3. Back button ---
+document.getElementById("back-btn").addEventListener("click", () => {
+    window.location.href = "../index.html";
+});
 
-// Update header and title
-    if (selectedState) {
-        document.getElementById("state-header").textContent = `${selectedState} — Temperature View`;
-        document.getElementById("state-title").textContent = `Average Temperatures in ${selectedState}`;
-        document.title = `${selectedState} — State Temperature View`;
-    }
-    document.getElementById("back-btn").addEventListener("click", () => {
-        window.location.href = "../index.html";
+// --- 4. Controls ---
+const monthYearInput = d3.select("#monthyear");
+const monthYearLabel = d3.select("#monthyear-label");
+const unitToggle = d3.select("#unit-toggle");
+const dataToggle = d3.select("#data-toggle");
+let currentUnit = "F";
+let currentDataset = "monthly";
+let currentYear = 1800;
+let currentMonth = 1;
+
+// --- 5. SVG setup ---
+const width = 980, height = 400;
+const svgState = d3.select("#stateview");
+const svgLine = d3.select("#linechart");
+
+// --- 6. Color scales ---
+const colorScaleF = d3.scaleSequential().interpolator(d3.interpolateTurbo);
+const colorScaleC = d3.scaleSequential().interpolator(d3.interpolateTurbo);
+
+// --- 7. Load map and data ---
+Promise.all([
+    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
+    d3.csv("../data/state_yearly_avg.csv"),
+    d3.csv("../data/state_monthly_avg.csv")
+]).then(([us, yearly, monthly]) => {
+    const geo = topojson.feature(us, us.objects.states).features;
+    const stateFeature = geo.find(f => f.properties.name === selectedState);
+
+    // --- Clean and filter data ---
+    yearly.forEach(d => {
+        d.Year = +d.Year;
+        d.AvgTemp_F_Yearly = +d.AvgTemp_F_Yearly;
+        d.AvgTemp_C_Yearly = +d.AvgTemp_C_Yearly;
+    });
+    monthly.forEach(d => {
+        d.dt = new Date(d.dt);
+        d.Year = d.dt.getFullYear();
+        d.Month = d.dt.getMonth() + 1;
+        d.AvgTemp_F = +d.AvgTemp_F;
+        d.AvgTemp_C = +d.AvgTemp_C;
     });
 
-    const rows = [];
-  for (const s of states) {
-    const baseTemp = baseTemps[s] || 50;
-    for (const y of years) {
-      const trend = (y - 1900) * 0.03;
-      const noise = d3.randomNormal.source(d3.randomLcg(42 + s.charCodeAt(0)))(0, 1.2)();
-      rows.push({ state: s, year: y, temp_f: +(baseTemp + trend + noise).toFixed(2) });
+    const stateYearly = yearly.filter(d => d.State === selectedState);
+    const stateMonthly = monthly.filter(d => d.State === selectedState);
+
+    // --- Initial slider setup ---
+    const totalMonths = (2020 - 1800 + 1) * 12 - 1;
+    monthYearInput
+        .attr("min", 0)
+        .attr("max", totalMonths)
+        .attr("step", 1)
+        .property("value", 0);
+
+    // --- Initial label and draw ---
+    monthYearLabel.text("Jan-1800");
+    drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear);
+    drawLineChart(stateMonthly, "monthly");
+
+    // --- Helper: update all visualizations ---
+    function updateView() {
+        if (currentDataset === "yearly") {
+            // Switch slider to yearly range
+            monthYearInput
+                .attr("min", 1800)
+                .attr("max", 2020)
+                .attr("step", 1)
+                .property("value", currentYear);
+            monthYearLabel.text(currentYear);
+
+            drawStateMap(stateFeature, stateYearly, 1, currentYear);
+            drawLineChart(stateYearly, "yearly");
+        } else {
+            // Switch slider to monthly range
+            const totalMonths = (2020 - 1800 + 1) * 12 - 1;
+            const index = (currentYear - 1800) * 12 + (currentMonth - 1);
+            monthYearInput
+                .attr("min", 0)
+                .attr("max", totalMonths)
+                .attr("step", 1)
+                .property("value", index);
+            const monthNameStr = new Date(currentYear, currentMonth - 1)
+                .toLocaleString("default", { month: "short" });
+            monthYearLabel.text(`${monthNameStr}-${currentYear}`);
+
+            drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear);
+            drawLineChart(stateMonthly, "monthly");
+        }
     }
-  }
-  return rows;
-})();
 
-let stateYearMap = new Map();
-let yearsDomain = [1900, 2020];
-let selectedYear = 2000;
-let currentState = null;
-let useCelsius = false;
+    // --- Slider handler ---
+    monthYearInput.on("input", e => {
+        if (currentDataset === "yearly") {
+            currentYear = +e.target.value;
+            monthYearLabel.text(currentYear);
+            drawStateMap(stateFeature, stateYearly, 1, currentYear);
+            drawLineChart(stateYearly, "yearly");
+        } else {
+            const index = +e.target.value;
+            const year = 1800 + Math.floor(index / 12);
+            const month = (index % 12) + 1;
+            currentYear = year;
+            currentMonth = month;
 
-const yearInput = document.getElementById("year");
-const yearLabel = document.getElementById("year-label");
-const unitToggle = document.getElementById("unit-toggle");
-const unitLabel = document.getElementById("unit-label");
-const stateSvg = d3.select("#stateview").attr("viewBox", `0 0 ${STATE_W} ${STATE_H}`);
-const lineSvg = d3.select("#linechart").attr("viewBox", `0 0 ${LINE_W} ${LINE_H}`);
-const detailTitle = d3.select("#detail-title");
-const stateTitle = d3.select("#state-title");
-const stateHeader = d3.select("#state-header");
-const pageTitle = d3.select("#page-title");
-const backBtn = d3.select("#back-btn");
+            const monthNameStr = new Date(year, month - 1)
+                .toLocaleString("default", { month: "short" });
+            monthYearLabel.text(`${monthNameStr}-${year}`);
 
-const color = d3.scaleSequential().interpolator(d3.interpolateTurbo);
+            drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear);
+            drawLineChart(stateMonthly, "monthly");
+        }
+    });
 
-let statesMesh = null;
-let nameToFeature = new Map();
+    // --- °F / °C toggle ---
+    unitToggle.on("change", e => {
+        currentUnit = e.target.checked ? "C" : "F";
+        updateView();
+    });
 
-function fahrenheitToCelsius(f) {
-  return (f - 32) * 5 / 9;
+    // --- Data View toggle (Monthly / Yearly) ---
+    dataToggle.on("change", e => {
+        currentDataset = e.target.checked ? "yearly" : "monthly";
+        updateView();
+    });
+});
+
+// --- 8. Draw map ---
+function drawStateMap(stateFeature, data, month = 1, year = 1800) {
+    const key =
+        currentUnit === "F"
+            ? (data[0].AvgTemp_F_Yearly !== undefined ? "AvgTemp_F_Yearly" : "AvgTemp_F")
+            : (data[0].AvgTemp_C_Yearly !== undefined ? "AvgTemp_C_Yearly" : "AvgTemp_C");
+
+    let filtered;
+    if (data[0].Month) {
+        filtered = data.filter(d => d.Year === year && d.Month === month);
+    } else {
+        filtered = data.filter(d => d.Year === year);
+    }
+
+    const tempVal = filtered.length ? filtered[0][key] : null;
+    const scale = currentUnit === "F" ? colorScaleF : colorScaleC;
+    scale.domain([0, currentUnit === "F" ? 90 : 32]);
+
+    svgState.selectAll("*").remove();
+
+    // --- Center and zoom out 10% ---
+    const projection = d3.geoAlbersUsa().fitSize([width * 0.9, height * 0.9], stateFeature);
+    const path = d3.geoPath(projection);
+
+    svgState.append("path")
+        .datum(stateFeature)
+        .attr("d", path)
+        .attr("fill", tempVal ? scale(tempVal) : "#444")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 1.5)
+        .attr("transform", `translate(${width * 0.05}, ${height * 0.05})`);
+
+    svgState.append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 20)
+        .attr("text-anchor", "middle")
+        .attr("fill", "var(--text)")
+        .attr("font-size", "14px")
+        .text(
+            tempVal
+                ? `${monthName(month)} ${year} Avg: ${tempVal.toFixed(1)} °${currentUnit}`
+                : `No data for ${monthName(month)} ${year}`
+        );
 }
 
-function celsiusToFahrenheit(c) {
-  return c * 9 / 5 + 32;
-}
+// --- 9. Draw line chart ---
+function drawLineChart(data, mode = "monthly") {
+    svgLine.selectAll("*").remove();
 
-function convertTemperature(temp, toCelsius) {
-  return toCelsius ? fahrenheitToCelsius(temp) : temp;
-}
+    const key =
+        currentUnit === "F"
+            ? (mode === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
+            : (mode === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
 
-function formatTemperature(temp, useCelsius) {
-  const convertedTemp = convertTemperature(temp, useCelsius);
-  const unit = useCelsius ? '°C' : '°F';
-  return `${convertedTemp.toFixed(1)}${unit}`;
-}
+    const margin = { top: 30, right: 30, bottom: 175, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
 
-function renderLegend(scale, container) {
-  container.innerHTML = "";
-  const min = scale.domain()[0], max = scale.domain()[1];
-  const swatch = document.createElement("canvas");
-  swatch.width = 240; swatch.height = 14;
-  const ctx = swatch.getContext("2d");
-  for (let i = 0; i < swatch.width; i++) {
-    const t = i / (swatch.width - 1);
-    ctx.fillStyle = scale(min + t * (max - min));
-    ctx.fillRect(i, 0, 1, swatch.height);
-  }
-  const wrap = document.getElementById("legend");
-  wrap.appendChild(swatch);
-  const axis = document.createElement("div");
-  axis.style.display = "flex";
-  axis.style.justifyContent = "space-between";
-  axis.style.width = "240px";
-  axis.style.fontSize = "12px";
-  axis.style.color = "#9ca3af";
-  const unit = useCelsius ? '°C' : '°F';
-  const minConverted = convertTemperature(min, useCelsius);
-  const maxConverted = convertTemperature(max, useCelsius);
-  axis.innerHTML = `<span>${minConverted.toFixed(1)}${unit}</span><span>Avg Temp</span><span>${maxConverted.toFixed(1)}${unit}</span>`;
-  wrap.appendChild(axis);
-}
+    let x, xAxis;
+    if (mode === "yearly") {
+        x = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.Year))
+            .range([0, innerWidth]);
+        xAxis = d3.axisBottom(x).tickFormat(d3.format("d")).ticks(10);
+    } else {
+        const parseIndex = d => (d.Year - 1800) * 12 + d.Month - 1;
+        x = d3.scaleLinear()
+            .domain(d3.extent(data, parseIndex))
+            .range([0, innerWidth]);
+        xAxis = d3.axisBottom(x)
+            .ticks(10)
+            .tickFormat(i => {
+                const year = 1800 + Math.floor(i / 12);
+                const month = (i % 12) + 1;
+                return `${monthName(month)} ${year}`;
+            });
+    }
 
-function getStateFromURL() {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('state');
-}
+    const y = d3.scaleLinear()
+        .domain(d3.extent(data, d => d[key])).nice()
+        .range([innerHeight, 0]);
 
-function updateURL(state) {
-  const url = new URL(window.location);
-  url.searchParams.set('state', state);
-  window.history.replaceState({}, '', url);
-}
+    const line = d3.line()
+        .x(d => (mode === "yearly" ? x(d.Year) : x((d.Year - 1800) * 12 + d.Month - 1)))
+        .y(d => y(d[key]));
 
-init();
+    const g = svgLine.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-async function init() {
-  currentState = getStateFromURL();
-  
-  if (!currentState) {
-    window.location.href = '../index.html';
-    return;
-  }
+    g.append("path")
+        .datum(data)
+        .attr("fill", "none")
+        .attr("stroke", "var(--accent)")
+        .attr("stroke-width", 1.8)
+        .attr("d", line);
 
-  const us = await d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json");
-  statesMesh = topojson.feature(us, us.objects.states);
-  nameToFeature = new Map(statesMesh.features.map(f => [fixName(f.properties && f.properties.name), f]));
+// --- X Axis ---
+    const xAxisGroup = g.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(xAxis);
 
-  let rows = [];
-  console.log("Using fallback data (CSV file not available)");
-  rows = fallbackRows;
+    xAxisGroup.selectAll("text")
+        .style("fill", "var(--muted)")
+        .style("font-size", "10px")
+        .attr("transform", "rotate(-40)")
+        .attr("text-anchor", "end");
 
-  const nested = d3.group(rows, d => d.state);
-  stateYearMap = new Map(
-    Array.from(nested, ([state, arr]) => [state, new Map(arr.map(r => [r.year, r.temp_f]))])
-  );
+// Add visible baseline line (styled like chart border)
+    xAxisGroup.select(".domain")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 1.5);
 
-  const allYears = Array.from(new Set(rows.map(r => r.year))).sort((a, b) => a - b);
-  yearsDomain = [allYears[0], allYears[allYears.length - 1]];
-  selectedYear = clamp(+yearInput.value || yearsDomain[0], yearsDomain[0], yearsDomain[1]);
-  yearInput.min = yearsDomain[0];
-  yearInput.max = yearsDomain[1];
-  yearInput.value = selectedYear;
-  yearLabel.textContent = selectedYear;
+    xAxisGroup.selectAll(".tick line")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 0.8)
+        .attr("y2", 4); // short downward ticks
 
-  stateHeader.text(`${currentState} Temperature Analysis`);
-  pageTitle.text(`${currentState} Temperature View — Milestone`);
+    g.selectAll(".domain")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 1.5);
 
-  updateColorDomainForYear(selectedYear);
-  renderLegend(color, document.getElementById("legend"));
-
-  backBtn.on("click", () => {
-    window.location.href = '../index.html';
-  });
-
-  unitToggle.addEventListener("change", () => {
-    useCelsius = unitToggle.checked;
-    unitLabel.textContent = useCelsius ? '°C' : '°F';
-    updateColorDomainForYear(selectedYear);
-    drawStateView(currentState);
-    drawLine(currentState);
-  });
-
-  drawStateView(currentState);
-  drawLine(currentState);
-
-  yearInput.addEventListener("input", () => {
-    selectedYear = +yearInput.value;
-    yearLabel.textContent = selectedYear;
-    updateColorDomainForYear(selectedYear);
-    drawStateView(currentState);
-    drawLine(currentState);
-  });
-}
-
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-function fixName(name) { return NAME_FIX.get(name) || name; }
-
-function updateColorDomainForYear(year) {
-  const vals = [];
-  for (const [, byYear] of stateYearMap) {
-    const v = byYear.get(year);
-    if (v != null) vals.push(v);
-  }
-  if (vals.length) {
-    const q10 = d3.quantile(vals, 0.10);
-    const q90 = d3.quantile(vals, 0.90);
-    color.domain([q10, q90]);
-  } else {
-    color.domain([40, 80]);
-  }
-  renderLegend(color, document.getElementById("legend"));
-}
-
-function drawStateView(stateName) {
-  stateSvg.selectAll("*").remove();
-
-  const g = stateSvg.append("g");
-  if (!stateName || !nameToFeature.has(stateName)) {
-    stateTitle.text("State not found");
-    g.append("text")
-      .attr("x", STATE_W / 2)
-      .attr("y", STATE_H / 2)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#9ca3af")
-      .text("State not found");
-    return;
-  }
-
-  const feature = nameToFeature.get(stateName);
-  const projection = d3.geoAlbersUsa().fitSize([STATE_W, STATE_H], feature);
-  const path = d3.geoPath(projection);
-
-  const val = stateYearMap.get(stateName)?.get(selectedYear);
-  const fill = val != null ? color(val) : "#2a3557";
-
-  stateTitle.text(`${stateName} — ${selectedYear} Average Temperature: ${val != null ? formatTemperature(val, useCelsius) : "No data"}`);
-
-  g.append("path")
-    .datum(feature)
-    .attr("d", path)
-    .attr("fill", fill)
-    .attr("stroke", "#0b1022")
-    .attr("stroke-width", 2);
-
-  if (val != null) {
-    const c = d3.geoPath(projection).centroid(feature);
-    g.append("text")
-      .attr("x", c[0])
-      .attr("y", c[1])
-      .attr("text-anchor", "middle")
-      .attr("dy", "-0.6em")
-      .attr("fill", "#e5e7eb")
-      .style("font-weight", 600)
-      .style("font-size", "18px")
-      .text(formatTemperature(val, useCelsius));
-  }
-}
-
-function drawLine(stateName) {
-  lineSvg.selectAll("*").remove();
-
-  const g = lineSvg.append("g").attr("transform", `translate(${MARGIN.l},${MARGIN.t})`);
-  const innerW = LINE_W - MARGIN.l - MARGIN.r;
-  const innerH = LINE_H - MARGIN.t - MARGIN.b;
-
-  if (!stateName || !stateYearMap.has(stateName)) {
-    detailTitle.text("No temperature trend data available");
-    g.append("text")
-      .attr("x", innerW / 2)
-      .attr("y", innerH / 2)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#9ca3af")
-      .text("No data available");
-    return;
-  }
-  detailTitle.text(`${stateName} — ${yearsDomain[0]}–${yearsDomain[1]} Average Temperature Trend (${useCelsius ? '°C' : '°F'})`);
-
-  const series = Array.from(stateYearMap.get(stateName).entries())
-    .map(([year, temp_f]) => ({ year: +year, temp_f: +temp_f }))
-    .filter(d => d.year >= yearsDomain[0] && d.year <= yearsDomain[1])
-    .sort((a, b) => a.year - b.year);
-
-  if (!series.length) {
-    g.append("text")
-      .attr("x", innerW / 2)
-      .attr("y", innerH / 2)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#9ca3af")
-      .text("No data");
-    return;
-  }
-
-  const x = d3.scaleLinear().domain(d3.extent(series, d => d.year)).nice().range([0, innerW]);
-  const y = d3.scaleLinear().domain(d3.extent(series, d => convertTemperature(d.temp_f, useCelsius))).nice().range([innerH, 0]);
-
-  const xAxis = d3.axisBottom(x).ticks(8).tickFormat(d3.format("d"));
-  const yAxis = d3.axisLeft(y).ticks(6);
-
-  g.append("g").attr("transform", `translate(0,${innerH})`).attr("class", "axis").call(xAxis);
-  g.append("g").attr("class", "axis").call(yAxis);
-
-  g.append("text")
-    .attr("x", innerW)
-    .attr("y", innerH + 32)
-    .attr("text-anchor", "end")
-    .attr("fill", "#9ca3af")
-    .text("Year");
-
-  g.append("text")
-    .attr("x", 0)
-    .attr("y", -8)
-    .attr("text-anchor", "start")
-    .attr("fill", "#9ca3af")
-    .text(`Average Temperature (${useCelsius ? '°C' : '°F'})`);
-
-  const line = d3.line().x(d => x(d.year)).y(d => y(convertTemperature(d.temp_f, useCelsius))).curve(d3.curveMonotoneX);
-
-  g.append("path")
-    .datum(series)
-    .attr("fill", "none")
-    .attr("stroke", "#22d3ee")
-    .attr("stroke-width", 3)
-    .attr("d", line);
-
-  const sel = series.find(d => d.year === selectedYear);
-  if (sel) {
-    g.append("circle")
-      .attr("cx", x(sel.year))
-      .attr("cy", y(convertTemperature(sel.temp_f, useCelsius)))
-      .attr("r", 5)
-      .attr("fill", "#22d3ee")
-      .attr("stroke", "#0b1022")
-      .attr("stroke-width", 2);
+    g.append("g")
+        .call(d3.axisLeft(y).ticks(6))
+        .selectAll("text")
+        .style("fill", "var(--muted)");
 
     g.append("text")
-      .attr("x", x(sel.year) + 8)
-      .attr("y", y(convertTemperature(sel.temp_f, useCelsius)) - 8)
-      .attr("fill", "#e5e7eb")
-      .style("font-weight", 600)
-      .text(`${sel.year}: ${formatTemperature(sel.temp_f, useCelsius)}`);
-  }
+        .attr("x", innerWidth / 2)
+        .attr("y", innerHeight + 65)
+        .attr("text-anchor", "middle")
+        .attr("fill", "var(--muted)")
+        .attr("font-size", "13px")
+        .text(mode === "yearly" ? "Year" : "Month-Year");
+
+    g.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -innerHeight / 2)
+        .attr("y", -45)
+        .attr("text-anchor", "middle")
+        .attr("fill", "var(--muted)")
+        .attr("font-size", "13px")
+        .text(`Average Temperature (°${currentUnit})`);
+
+    g.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "var(--text)")
+        .attr("font-size", "15px")
+        .text(
+            mode === "yearly"
+                ? `Yearly Average Temperature Trend — ${selectedState}`
+                : `Monthly Average Temperature Trend — ${selectedState}`
+        );
+}
+
+// --- Helper ---
+function monthName(m) {
+    return new Date(2000, m - 1).toLocaleString("default", { month: "short" });
 }

@@ -20,30 +20,49 @@
   </header>
 
   <main class="layout">
-    <section class="controls">
-      <label for="year">
-        <span>Year:</span>
-        <strong id="year-label">2000</strong>
-      </label>
-      <input type="range" id="year" min="1900" max="2020" step="1" value="2000" />
-      
-      <div class="unit-toggle">
-        <label for="unit-toggle">
-          <span>Temperature Unit:</span>
-          <div class="toggle-container">
-            <span id="unit-label">°F</span>
-            <label class="switch">
-              <input type="checkbox" id="unit-toggle" />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </label>
-      </div>
-      
-      <div class="legend" id="legend"></div>
-    </section>
+      <section class="controls">
+          <!-- Month-Year Slider -->
+          <label for="monthyear">
+              <span>Date:</span>
+              <strong id="monthyear-label">Jan-1800</strong>
+          </label>
+          <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
 
-    <section class="state-detail">
+          <!-- Temperature Unit Toggle -->
+          <div class="unit-toggle">
+              <label for="unit-toggle">
+                  <span>Temperature Unit:</span>
+                  <div class="toggle-container">
+                      <span class="unit-label-left">°F</span>
+                      <label class="switch">
+                          <input type="checkbox" id="unit-toggle" />
+                          <span class="slider"></span>
+                      </label>
+                      <span class="unit-label-right">°C</span>
+                  </div>
+              </label>
+          </div>
+
+          <!-- Monthly / Yearly Data Toggle -->
+          <div class="data-toggle">
+              <label for="data-toggle">
+                  <span>Data View:</span>
+                  <div class="toggle-container">
+                      <span class="data-label-left">Monthly</span>
+                      <label class="switch">
+                          <input type="checkbox" id="data-toggle" />
+                          <span class="slider"></span>
+                      </label>
+                      <span class="data-label-right">Yearly</span>
+                  </div>
+              </label>
+          </div>
+
+          <div class="legend" id="legend"></div>
+      </section>
+
+
+      <section class="state-detail">
       <h2 id="state-title">Loading state data...</h2>
       <svg id="stateview" width="980" height="400" role="img" aria-label="Focused state view"></svg>
     </section>
