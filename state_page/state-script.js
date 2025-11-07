@@ -283,7 +283,10 @@ function drawStateMap(stateFeature, data, month = 1, year = 1800) {
     const e = valAt(endYear, endMonth);
     const delta = (b == null || e == null) ? null : (e - b);
     const domain = delta == null ? [-1, 1] : [delta - 2, delta + 2];
-    const deltaScale = d3.scaleSequential().domain([domain[0], domain[1]]).interpolator(d3.interpolateRdBu);
+    const maxAbs = Math.max(Math.abs(domain[0]), Math.abs(domain[1]));
+    const deltaScale = d3.scaleSequential()
+        .domain([maxAbs, -maxAbs]) // flip: red = warmer, blue = cooler
+        .interpolator(d3.interpolateRdBu);
 
     svgState.append("path")
         .datum(stateFeature)

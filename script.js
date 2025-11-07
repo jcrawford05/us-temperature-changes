@@ -138,7 +138,11 @@ function updateMap(selected) {
     });
 
     const [dmin, dmax] = deltas.length ? d3.extent(deltas) : [-5, 5];
-    const deltaScale = d3.scaleSequential().domain([dmin, dmax]).interpolator(d3.interpolateRdBu).clamp(true);
+    const maxAbs = Math.max(Math.abs(dmin), Math.abs(dmax));
+    const deltaScale = d3.scaleSequential()
+        .domain([maxAbs, -maxAbs]) // flipped so red = warmer, blue = cooler
+        .interpolator(d3.interpolateRdBu)
+        .clamp(true);
 
     svg.selectAll(".state")
         .transition().duration(350)
@@ -208,7 +212,10 @@ function buildLegend(mode = "average", colorScale) {
         .attr("id", "legend-gradient")
         .attr("x1", "0%").attr("x2", "100%").attr("y1", "0%").attr("y2", "0%");
 
-    const [min, max] = colorScale.domain();
+    let [min, max] = colorScale.domain();
+    if (min > max) [min, max] = [max, min]; // ensure left = lower, right = higher
+    const axisScale = d3.scaleLinear().domain([min, max]).range([m.left, m.left + w]);
+
     const n = 60;
     d3.range(n).forEach(i => {
         gradient.append("stop")
@@ -223,7 +230,7 @@ function buildLegend(mode = "average", colorScale) {
         .style("stroke", "var(--border)")
         .attr("rx", 4).attr("ry", 4);
 
-    const axisScale = d3.scaleLinear().domain([min, max]).range([m.left, m.left + w]);
+
     const axis = d3.axisBottom(axisScale).ticks(6)
         .tickFormat(d => `${(+d).toFixed(mode === "average" ? 0 : 1)}°${currentUnit}`);
 
