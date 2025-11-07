@@ -107,6 +107,48 @@ html, body {
     box-shadow: 0 0 2px var(--accent);
 }
 
+/* Analytics block */
+.analytics {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+}
+
+.analytics h3 {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.display-toggle,
+.range-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+.range-row .range-caption {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.range-row input[type="range"] {
+    width: 100%;
+}
+
+/* Keep the new toggle’s labels consistent with others */
+.display-toggle .toggle-container span {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+
+
 .slider {
     position: absolute;
     cursor: pointer;
@@ -249,5 +291,33 @@ input:checked + .slider:before {
     width: 100%;
     height: auto;
     margin-top: 12px;
+}
+
+.display-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.display-toggle .toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.display-toggle span {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.analytics {
+    display: block;
+}
+
+/* Hide both sliders by default */
+.analytics .range-row,
+.analytics #end-row {
+    display: none;
 }
 

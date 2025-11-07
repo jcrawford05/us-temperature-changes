@@ -1,29 +1,44 @@
-// script.js — Global Temperature Visualization (U.S.)
-
 const svg = d3.select("#map");
 const tooltip = d3.select("#tooltip");
 const width = +svg.attr("width");
 const height = +svg.attr("height");
 
-// Controls
 const yearInput = d3.select("#year");
 const yearLabel = d3.select("#year-label");
 const unitToggle = d3.select("#unit-toggle");
 const dataToggle = d3.select("#data-toggle");
 
-// Projection and path
 const projection = d3.geoAlbersUsa().scale(1200).translate([width / 2, height / 2]);
 const path = d3.geoPath().projection(projection);
 
-// Color scales
-const colorScaleF = d3.scaleSequential().domain([0, 100]).interpolator(d3.interpolateTurbo);
-const colorScaleC = d3.scaleSequential().domain([-18, 38]).interpolator(d3.interpolateTurbo);
+const colorScaleF = d3.scaleSequential().domain([40, 90]).interpolator(d3.interpolateTurbo);
+const colorScaleC = d3.scaleSequential().domain([4, 32]).interpolator(d3.interpolateTurbo);
 
-let mapData, tempData = {}, currentDataset = "yearly";
+let mapData, tempData = {};
+let currentDataset = "yearly";
 let currentUnit = "F";
 let currentValue = 2000;
 
-// Load topoJSON and both datasets
+const displayToggle = d3.select("#display-toggle");
+const baseRange = d3.select("#base-range");
+const endRange = d3.select("#end-range");
+const baseLabel = d3.select("#base-label");
+const endLabel = d3.select("#end-label");
+const endRow = d3.select("#end-row");
+
+let displayMode = "average";
+let baseYear = 1800, baseMonth = 1;
+let endYear = 2000, endMonth = 1;
+
+const START_YEAR = 1800;
+const END_YEAR = 2020;
+
+const idxFromYM = (y, m) => (y - START_YEAR) * 12 + (m - 1);
+const ymFromIdx = i => [START_YEAR + Math.floor(i / 12), (i % 12) + 1];
+
+function monName(m) { return new Date(2000, m - 1).toLocaleString("default", { month: "short" }); }
+function fmtLabel(y, m, isMonthly) { return isMonthly ? `${monName(m)}-${y}` : `${y}`; }
+
 Promise.all([
     d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
     d3.csv("data/state_yearly_avg.csv"),
@@ -31,30 +46,29 @@ Promise.all([
 ]).then(([us, yearly, monthly]) => {
     mapData = topojson.feature(us, us.objects.states).features;
 
-    // Process yearly data
     yearly.forEach(d => {
         d.Year = +d.Year;
-        d.AvgTemp_F_Yearly = +d.AvgTemp_F_Yearly;
-        d.AvgTemp_C_Yearly = +d.AvgTemp_C_Yearly;
+        d.AvgTemp_F_Yearly = d.AvgTemp_F_Yearly === "" ? null : +d.AvgTemp_F_Yearly;
+        d.AvgTemp_C_Yearly = d.AvgTemp_C_Yearly === "" ? null : +d.AvgTemp_C_Yearly;
     });
 
-    // Process monthly data
     monthly.forEach(d => {
         d.dt = new Date(d.dt);
         d.Year = d.dt.getFullYear();
         d.Month = d.dt.getMonth() + 1;
-        d.AvgTemp_F = +d.AvgTemp_F;
-        d.AvgTemp_C = +d.AvgTemp_C;
+        d.AvgTemp_F = d.AvgTemp_F === "" ? null : +d.AvgTemp_F;
+        d.AvgTemp_C = d.AvgTemp_C === "" ? null : +d.AvgTemp_C;
     });
 
     tempData = { yearly, monthly };
 
     drawMap();
+    setSliderForDataset();
     updateMap(currentValue);
-    buildLegend();
+    buildLegend("average", currentUnit === "F" ? colorScaleF : colorScaleC);
+    initAnalyticsSliders();
 });
 
-// Draw map base
 function drawMap() {
     svg.selectAll(".state")
         .data(mapData)
@@ -68,179 +82,263 @@ function drawMap() {
             const stateName = d.properties.name;
             window.location.href = `state_page/state.html?state=${encodeURIComponent(stateName)}`;
         });
-
 }
 
-// Update map for selected value
-function updateMap(selectedValue) {
+function updateMap(selected) {
     let dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
-    const colorScale = currentUnit === "F" ? colorScaleF : colorScaleC;
     const key = currentUnit === "F"
         ? (currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
         : (currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
 
-    let filtered;
-    if (currentDataset === "yearly") {
-        filtered = dataset.filter(d => d.Year === selectedValue);
-        yearLabel.text(selectedValue);
-    } else {
-        const [month, year] = selectedValue.split("-").map(Number);
-        filtered = dataset.filter(d => d.Year === year && d.Month === month);
-        const monthName = new Date(year, month - 1).toLocaleString("default", { month: "short" });
-        yearLabel.text(`${monthName}-${year}`);
+    if (displayMode === "average") {
+        let year, month;
+        if (currentDataset === "yearly") year = +selected;
+        else {
+            const [m, y] = selected.split("-").map(Number);
+            year = y; month = m;
+        }
+        const filtered = currentDataset === "yearly"
+            ? dataset.filter(d => d.Year === year)
+            : dataset.filter(d => d.Year === year && d.Month === month);
+
+        const tempByState = new Map(filtered.map(d => [d.State, d[key]]));
+        const scale = currentUnit === "F" ? colorScaleF : colorScaleC;
+
+        svg.selectAll(".state")
+            .transition().duration(350)
+            .attr("fill", d => {
+                const v = tempByState.get(d.properties.name);
+                return v == null || isNaN(v) ? "#555" : scale(v);
+            });
+
+        buildLegend("average", scale);
+        return;
     }
 
-    const tempByState = new Map(filtered.map(d => [d.State, d[key]]));
+    const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
+    const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
+    const keyUse = currentUnit === "F" ? keyF : keyC;
+
+    const baseRows = currentDataset === "yearly"
+        ? dataset.filter(d => d.Year === baseYear)
+        : dataset.filter(d => d.Year === baseYear && d.Month === baseMonth);
+    const endRows = currentDataset === "yearly"
+        ? dataset.filter(d => d.Year === endYear)
+        : dataset.filter(d => d.Year === endYear && d.Month === endMonth);
+
+    const baseMap = new Map(baseRows.map(d => [d.State, d[keyUse]]));
+    const endMap = new Map(endRows.map(d => [d.State, d[keyUse]]));
+
+    const deltas = [];
+    mapData.forEach(f => {
+        const s = f.properties.name;
+        const b = baseMap.get(s);
+        const e = endMap.get(s);
+        if (b != null && e != null && !isNaN(b) && !isNaN(e)) deltas.push(e - b);
+    });
+
+    const [dmin, dmax] = deltas.length ? d3.extent(deltas) : [-5, 5];
+    const deltaScale = d3.scaleSequential().domain([dmin, dmax]).interpolator(d3.interpolateRdBu).clamp(true);
 
     svg.selectAll(".state")
-        .transition()
-        .duration(400)
+        .transition().duration(350)
         .attr("fill", d => {
-            const val = tempByState.get(d.properties.name);
-            return val ? colorScale(val) : "#333";
+            const s = d.properties.name;
+            const b = baseMap.get(s);
+            const e = endMap.get(s);
+            if (b == null || e == null || isNaN(b) || isNaN(e)) return "#666";
+            return deltaScale(e - b);
         });
+
+    buildLegendDelta(deltaScale);
 }
 
-// Tooltip handlers
 function handleMouseOver() { tooltip.style("opacity", 1); }
 function handleMouseMove(event, d) {
     const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
-    const key = currentUnit === "F"
-        ? (currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
-        : (currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
+    const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
+    const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
+    const key = currentUnit === "F" ? keyF : keyC;
 
-    let val;
-    if (currentDataset === "yearly") {
-        val = dataset.find(x => x.State === d.properties.name && x.Year === +currentValue)?.[key];
+    let html;
+    if (displayMode === "average") {
+        let val;
+        if (currentDataset === "yearly") {
+            val = dataset.find(x => x.State === d.properties.name && x.Year === +currentValue)?.[key];
+        } else {
+            const [month, year] = currentValue.split("-").map(Number);
+            val = dataset.find(x => x.State === d.properties.name && x.Year === year && x.Month === month)?.[key];
+        }
+        html = `<strong>${d.properties.name}</strong><br>` +
+            (val == null || isNaN(val) ? `No data found` : `${val.toFixed(2)} °${currentUnit}`);
     } else {
-        const [month, year] = currentValue.split("-").map(Number);
-        val = dataset.find(x => x.State === d.properties.name && x.Year === year && x.Month === month)?.[key];
+        const baseRows = currentDataset === "yearly"
+            ? dataset.filter(x => x.Year === baseYear && x.State === d.properties.name)
+            : dataset.filter(x => x.Year === baseYear && x.Month === baseMonth && x.State === d.properties.name);
+        const endRows = currentDataset === "yearly"
+            ? dataset.filter(x => x.Year === endYear && x.State === d.properties.name)
+            : dataset.filter(x => x.Year === endYear && x.Month === endMonth && x.State === d.properties.name);
+        const b = baseRows[0]?.[key];
+        const e = endRows[0]?.[key];
+        const delta = (b == null || e == null || isNaN(b) || isNaN(e)) ? null : (e - b);
+        html = `<strong>${d.properties.name}</strong><br>` +
+            (delta == null
+                ? `No data available for comparison`
+                : `Δ Temp (${fmtLabel(baseYear, baseMonth, currentDataset === "monthly")} → ${fmtLabel(endYear, endMonth, currentDataset === "monthly")}): ` +
+                `${delta >= 0 ? "+" : ""}${delta.toFixed(2)} °${currentUnit}`);
     }
 
-    tooltip.html(`<strong>${d.properties.name}</strong><br>${val ? val.toFixed(2) + " °" + currentUnit : "No data"}`)
+    tooltip.html(html)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
 }
 function handleMouseLeave() { tooltip.style("opacity", 0); }
 
-// Build legend
-function buildLegend() {
+function buildLegend(mode = "average", colorScale) {
     const legend = d3.select("#legend");
-    legend.selectAll("*").remove(); // clear previous legend
+    legend.selectAll("*").remove();
 
-    const width = 320,
-        height = 12;
-    const margin = {
-        top: 10,
-        right: 30,
-        bottom: 28,
-        left: 30 };
-
-    // Choose current scale
-    const scale = currentUnit === "F" ? colorScaleF : colorScaleC;
-    const [min, max] = scale.domain();
-
-    // Create SVG inside the legend div
+    const w = 320, h = 12, m = { top: 10, right: 10, bottom: 28, left: 30 };
     const svgLegend = legend.append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom);
+        .attr("width", w + m.left + m.right)
+        .attr("height", h + m.top + m.bottom);
 
-    // Define gradient
     const defs = svgLegend.append("defs");
     const gradient = defs.append("linearGradient")
         .attr("id", "legend-gradient")
-        .attr("x1", "0%")
-        .attr("x2", "100%")
-        .attr("y1", "0%")
-        .attr("y2", "0%");
+        .attr("x1", "0%").attr("x2", "100%").attr("y1", "0%").attr("y2", "0%");
 
-    // Build continuous color stops
-    const n = 50; // number of stops for smoothness
+    const [min, max] = colorScale.domain();
+    const n = 60;
     d3.range(n).forEach(i => {
         gradient.append("stop")
             .attr("offset", `${(i / (n - 1)) * 100}%`)
-            .attr("stop-color", scale(min + (i / (n - 1)) * (max - min)));
+            .attr("stop-color", colorScale(min + (i / (n - 1)) * (max - min)));
     });
 
-    // Draw gradient rect
     svgLegend.append("rect")
-        .attr("x", margin.left)
-        .attr("y", margin.top)
-        .attr("width", width)
-        .attr("height", height)
+        .attr("x", m.left).attr("y", m.top)
+        .attr("width", w).attr("height", h)
         .style("fill", "url(#legend-gradient)")
         .style("stroke", "var(--border)")
-        .style("rx", 4)
-        .style("ry", 4);
+        .attr("rx", 4).attr("ry", 4);
 
-    // Legend scale axis
-    const legendScale = d3.scaleLinear()
-        .domain([min, max])
-        .range([margin.left, width + margin.left]);
-
-    const legendAxis = d3.axisBottom(legendScale)
-        .ticks(6)
-        .tickFormat(d => `${d.toFixed(0)}°${currentUnit}`);
+    const axisScale = d3.scaleLinear().domain([min, max]).range([m.left, m.left + w]);
+    const axis = d3.axisBottom(axisScale).ticks(6)
+        .tickFormat(d => `${(+d).toFixed(mode === "average" ? 0 : 1)}°${currentUnit}`);
 
     svgLegend.append("g")
-        .attr("class", "legend-axis")
-        .attr("transform", `translate(0, ${height + margin.top})`)
-        .call(legendAxis)
+        .attr("transform", `translate(0, ${h + m.top})`)
+        .call(axis)
         .selectAll("text")
         .style("fill", "var(--muted)")
         .style("font-size", "12px");
 
-    // Style axis lines
     svgLegend.selectAll(".domain, .tick line").attr("stroke", "var(--border)");
 }
 
-// Event listeners
-yearInput.on("input", (event) => {
-    currentValue = currentDataset === "yearly"
-        ? +event.target.value
-        : event.target.value; // keep as string for MM-YYYY
-    updateMap(currentValue);
-});
+function buildLegendDelta(scale) { buildLegend("delta", scale); }
 
-unitToggle.on("change", (event) => {
-    currentUnit = event.target.checked ? "C" : "F";
-    updateMap(currentValue);
-    buildLegend();
-});
-
-const dataToggleInput = document.getElementById("data-toggle");
-
-dataToggleInput.addEventListener("change", (event) => {
-    currentDataset = event.target.checked ? "yearly" : "monthly";
-    updateSliderForDataset();
-    updateMap(currentValue);
-});
-
-function updateSliderForDataset() {
+yearInput.on("input", function () {
     if (currentDataset === "yearly") {
-        yearInput.attr("min", 1800).attr("max", 2020).attr("step", 1);
+        currentValue = +this.value;
+        yearLabel.text(currentValue);
+    } else {
+        const startYear = START_YEAR;
+        const idx = +this.value;
+        const year = startYear + Math.floor(idx / 12);
+        const month = (idx % 12) + 1;
+        currentValue = `${month}-${year}`;
+        yearLabel.text(`${monName(month)}-${year}`);
+    }
+    updateMap(currentValue);
+});
+
+unitToggle.on("change", e => { currentUnit = e.target.checked ? "C" : "F"; updateMap(currentValue); });
+
+dataToggle.on("change", e => {
+    currentDataset = e.target.checked ? "yearly" : "monthly";
+    setSliderForDataset();
+    initAnalyticsSliders();
+    updateMap(currentValue);
+});
+
+displayToggle.on("change", e => {
+    displayMode = e.target.checked ? "delta" : "average";
+    const mainSlider = document.querySelector("#year, #monthyear");
+    if (mainSlider) {
+        mainSlider.disabled = displayMode === "delta";
+        mainSlider.style.opacity = displayMode === "delta" ? "0.4" : "1.0";
+        mainSlider.style.pointerEvents = displayMode === "delta" ? "none" : "auto";
+    }
+    const baseRowEl = document.querySelector(".range-row");
+    const endRowEl = document.getElementById("end-row");
+    baseRowEl.style.display = displayMode === "delta" ? "grid" : "none";
+    endRowEl.style.display = displayMode === "delta" ? "grid" : "none";
+    if (displayMode === "delta") initAnalyticsSliders();
+    updateMap(currentValue);
+});
+
+baseRange.on("input", e => {
+    if (currentDataset === "yearly") {
+        baseYear = +e.target.value;
+        if (displayMode === "delta" && endYear < baseYear) { endYear = baseYear; endRange.property("value", endYear); }
+        baseLabel.text(fmtLabel(baseYear, 1, false));
+        endLabel.text(fmtLabel(endYear, 1, false));
+    } else {
+        let [y, m] = ymFromIdx(+e.target.value);
+        baseYear = y; baseMonth = m;
+        if (displayMode === "delta" && (endYear < baseYear || (endYear === baseYear && endMonth < baseMonth))) {
+            endYear = baseYear; endMonth = baseMonth; endRange.property("value", idxFromYM(endYear, endMonth));
+        }
+        baseLabel.text(fmtLabel(baseYear, baseMonth, true));
+        endLabel.text(fmtLabel(endYear, endMonth, true));
+    }
+    updateMap(currentValue);
+});
+
+endRange.on("input", e => {
+    if (currentDataset === "yearly") {
+        endYear = Math.max(+e.target.value, baseYear);
+        endRange.property("value", endYear);
+        endLabel.text(fmtLabel(endYear, 1, false));
+    } else {
+        let [y, m] = ymFromIdx(+e.target.value);
+        if (y < baseYear || (y === baseYear && m < baseMonth)) { y = baseYear; m = baseMonth; }
+        endYear = y; endMonth = m;
+        endRange.property("value", idxFromYM(endYear, endMonth));
+        endLabel.text(fmtLabel(endYear, endMonth, true));
+    }
+    updateMap(currentValue);
+});
+
+function setSliderForDataset() {
+    if (currentDataset === "yearly") {
+        yearInput.attr("min", START_YEAR).attr("max", END_YEAR).attr("step", 1);
         currentValue = 2000;
         yearInput.property("value", currentValue);
+        yearLabel.text(currentValue);
     } else {
-        const startYear = 1800, endYear = 2020;
-        const totalMonths = (endYear - startYear + 1) * 12;
-        yearInput.attr("min", 0).attr("max", totalMonths - 1).attr("step", 1);
+        const maxIdx = (END_YEAR - START_YEAR + 1) * 12 - 1;
+        yearInput.attr("min", 0).attr("max", maxIdx).attr("step", 1);
         yearInput.property("value", 0);
         currentValue = "1-1800";
+        yearLabel.text("Jan-1800");
     }
 }
 
-
-// Adjust displayed label for monthly view slider movement
-yearInput.on("input", function(event) {
+function initAnalyticsSliders() {
     if (currentDataset === "yearly") {
-        currentValue = +this.value;
+        baseRange.attr("min", START_YEAR).attr("max", END_YEAR).attr("step", 1).property("value", baseYear);
+        endRange.attr("min", START_YEAR).attr("max", END_YEAR).attr("step", 1).property("value", endYear);
+        baseLabel.text(fmtLabel(baseYear, 1, false));
+        endLabel.text(fmtLabel(endYear, 1, false));
     } else {
-        const startYear = 1800;
-        const monthIndex = +this.value;
-        const year = startYear + Math.floor(monthIndex / 12);
-        const month = (monthIndex % 12) + 1;
-        currentValue = `${month}-${year}`;
+        const maxIdx = (END_YEAR - START_YEAR + 1) * 12 - 1;
+        baseRange.attr("min", 0).attr("max", maxIdx).attr("step", 1).property("value", idxFromYM(baseYear, baseMonth));
+        endRange.attr("min", 0).attr("max", maxIdx).attr("step", 1).property("value", idxFromYM(endYear, endMonth));
+        baseLabel.text(fmtLabel(baseYear, baseMonth, true));
+        endLabel.text(fmtLabel(endYear, endMonth, true));
     }
-    updateMap(currentValue);
-});
+    endRow.style("display", displayMode === "delta" ? "grid" : "none");
+}

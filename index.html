@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Global Temperature Changes — Milestone</title>
+    <title>U.S. Temperature Changes — Milestone</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
@@ -10,18 +10,20 @@
 </head>
 <body>
 <header class="app-header">
-    <h1>Global Temperature Changes (U.S.)</h1>
+    <h1>U.S. Temperature Changes</h1>
     <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
 </header>
 
 <main class="layout">
     <section class="controls">
+        <!-- Primary Date Slider (acts as single-date in Avg mode; monthly/yearly via Data View) -->
         <label for="year">
             <span>Date:</span>
             <strong id="year-label">2000</strong>
         </label>
         <input type="range" id="year" min="1800" max="2020" step="1" value="2000" />
 
+        <!-- Unit Toggle -->
         <div class="unit-toggle">
             <label for="unit-toggle">
                 <span>Temperature Unit:</span>
@@ -36,6 +38,7 @@
             </label>
         </div>
 
+        <!-- Data View Toggle -->
         <div class="data-toggle">
             <label for="data-toggle">
                 <span>Data View:</span>
@@ -50,8 +53,40 @@
             </label>
         </div>
 
-
         <div class="legend" id="legend"></div>
+
+        <!-- ANALYTICS -->
+        <section class="analytics">
+            <h3>Analytics</h3>
+
+            <!-- Δ Temperature toggle (ONLY toggle; old duplicate removed) -->
+            <div class="display-toggle">
+                <label for="display-toggle">
+                    <span>Display:</span>
+                    <div class="toggle-container">
+                        <span class="display-label-left">Avg Temp</span>
+                        <label class="switch">
+                            <input type="checkbox" id="display-toggle" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="display-label-right">Δ Temp</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Base / End sliders (side-by-side label style) -->
+            <div class="range-row">
+                <span class="range-caption">Base:</span>
+                <input type="range" id="base-range" />
+                <strong id="base-label">Jan-1800</strong>
+            </div>
+
+            <div class="range-row" id="end-row" style="display:none;">
+                <span class="range-caption">End:</span>
+                <input type="range" id="end-range" />
+                <strong id="end-label">Jan-2000</strong>
+            </div>
+        </section>
     </section>
 
     <section class="viz">
@@ -61,8 +96,7 @@
 
     <section class="info">
         <h2>How to Use</h2>
-        <p>Use the dropdown to switch between yearly and monthly average temperatures.
-            Slide the timeline to explore how average temperatures change across years or months.</p>
+        <p>Use Data View to switch monthly/yearly. In Analytics, enable Δ Temp to compare Base vs End dates.</p>
     </section>
 </main>
 
@@ -70,6 +104,6 @@
     <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year/month averages for the final.</p>
 </footer>
 
-<script src="./script.js?v=3"></script>
+<script src="./script.js?v=4"></script>
 </body>
 </html>

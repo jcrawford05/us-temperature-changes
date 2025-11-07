@@ -1,82 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title id="page-title">State Temperature View — Milestone</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-  <link rel="stylesheet" href="../style.css" />
+    <meta charset="utf-8" />
+    <title id="page-title">State Temperature View — Milestone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+    <link rel="stylesheet" href="../style.css" />
 </head>
 <body>
-  <header class="app-header">
+<header class="app-header">
     <div class="header-content">
-      <button id="back-btn" class="back-button">← Back to Map</button>
-      <div class="header-text">
-        <h1 id="state-header">State Temperature View</h1>
-        <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
-      </div>
+        <button id="back-btn" class="back-button">← Back to Map</button>
+        <div class="header-text">
+            <h1 id="state-header">State Temperature View</h1>
+            <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+        </div>
     </div>
-  </header>
+</header>
 
-  <main class="layout">
-      <section class="controls">
-          <!-- Month-Year Slider -->
-          <label for="monthyear">
-              <span>Date:</span>
-              <strong id="monthyear-label">Jan-1800</strong>
-          </label>
-          <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
+<main class="layout">
+    <section class="controls">
+        <!-- Month-Year / Year slider (auto-switch via Data View) -->
+        <label for="monthyear">
+            <span>Date:</span>
+            <strong id="monthyear-label">Jan-1800</strong>
+        </label>
+        <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
 
-          <!-- Temperature Unit Toggle -->
-          <div class="unit-toggle">
-              <label for="unit-toggle">
-                  <span>Temperature Unit:</span>
-                  <div class="toggle-container">
-                      <span class="unit-label-left">°F</span>
-                      <label class="switch">
-                          <input type="checkbox" id="unit-toggle" />
-                          <span class="slider"></span>
-                      </label>
-                      <span class="unit-label-right">°C</span>
-                  </div>
-              </label>
-          </div>
+        <!-- Unit Toggle -->
+        <div class="unit-toggle">
+            <label for="unit-toggle">
+                <span>Temperature Unit:</span>
+                <div class="toggle-container">
+                    <span class="unit-label-left">°F</span>
+                    <label class="switch">
+                        <input type="checkbox" id="unit-toggle" />
+                        <span class="slider"></span>
+                    </label>
+                    <span class="unit-label-right">°C</span>
+                </div>
+            </label>
+        </div>
 
-          <!-- Monthly / Yearly Data Toggle -->
-          <div class="data-toggle">
-              <label for="data-toggle">
-                  <span>Data View:</span>
-                  <div class="toggle-container">
-                      <span class="data-label-left">Monthly</span>
-                      <label class="switch">
-                          <input type="checkbox" id="data-toggle"  />
-                          <span class="slider"></span>
-                      </label>
-                      <span class="data-label-right">Yearly</span>
-                  </div>
-              </label>
-          </div>
+        <!-- Data View Toggle -->
+        <div class="data-toggle">
+            <label for="data-toggle">
+                <span>Data View:</span>
+                <div class="toggle-container">
+                    <span class="data-label-left">Monthly</span>
+                    <label class="switch">
+                        <input type="checkbox" id="data-toggle" />
+                        <span class="slider"></span>
+                    </label>
+                    <span class="data-label-right">Yearly</span>
+                </div>
+            </label>
+        </div>
 
-          <div class="legend" id="legend"></div>
-      </section>
+        <div class="legend" id="legend"></div>
 
+        <!-- ANALYTICS (always open) -->
+        <section class="analytics">
+            <h3>Analytics</h3>
 
-      <section class="state-detail">
-      <h2 id="state-title">Loading state data...</h2>
-      <svg id="stateview" width="980" height="400" role="img" aria-label="Focused state view"></svg>
+            <div class="display-toggle">
+                <label for="display-toggle">
+                    <span>Display:</span>
+                    <div class="toggle-container">
+                        <span class="display-label-left">Avg Temp</span>
+                        <label class="switch">
+                            <input type="checkbox" id="display-toggle" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="display-label-right">Δ Temp</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="range-row">
+                <span class="range-caption">Base:</span>
+                <input type="range" id="base-range" />
+                <strong id="base-label">Jan-1800</strong>
+            </div>
+
+            <div class="range-row" id="end-row" style="display:none;">
+                <span class="range-caption">End:</span>
+                <input type="range" id="end-range" />
+                <strong id="end-label">Jan-2000</strong>
+            </div>
+        </section>
+    </section>
+
+    <section class="state-detail">
+        <h2 id="state-title">Loading state data...</h2>
+        <svg id="stateview" width="980" height="400" role="img" aria-label="Focused state view"></svg>
     </section>
 
     <section class="detail">
-      <h2 id="detail-title">Temperature Trend</h2>
-      <svg id="linechart" width="980" height="300" role="img" aria-label="State temperature trend"></svg>
+        <h2 id="detail-title">Temperature Trend</h2>
+        <svg id="linechart" width="980" height="300" role="img" aria-label="State temperature trend"></svg>
     </section>
-  </main>
+</main>
 
-  <footer class="app-footer">
+<footer class="app-footer">
     <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year averages for the final.</p>
-  </footer>
+</footer>
 
-  <script src="state-script.js?v=2"></script>
+<script src="state-script.js?v=3"></script>
 </body>
 </html>
