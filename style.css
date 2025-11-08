@@ -328,5 +328,147 @@ input:checked + .slider:before {
     gap: 0.5rem;
 }
 
+/* ====== NAV MENU STYLING ====== */
 
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 16px;
+    border-bottom: 1px solid var(--border);
+}
 
+.nav-menu {
+    position: relative;
+}
+
+.menu-button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.menu-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 42px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 200px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    flex-direction: column;
+    z-index: 20;
+}
+
+.dropdown.show {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+
+.dropdown a {
+    color: var(--text);
+    text-decoration: none;
+    padding: 10px 14px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.dropdown a:last-child {
+    border-bottom: none;
+}
+
+.dropdown a:hover {
+    background: var(--border);
+    color: var(--accent);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== MODAL STYLES ===== */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: #000000cc;
+    backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.25s ease;
+}
+
+.modal-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    max-width: 720px;
+    width: 100%;
+    padding: 24px 28px;
+    position: relative;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    line-height: 1.6;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.modal-content p {
+    margin-bottom: 14px;
+    color: var(--text);
+    font-size: 15px;
+}
+
+.modal-content a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.modal-content a:hover {
+    text-decoration: underline;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: var(--accent);
+}

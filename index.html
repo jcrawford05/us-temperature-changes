@@ -10,20 +10,29 @@
 </head>
 <body>
 <header class="app-header">
-    <h1>U.S. Temperature Changes</h1>
-    <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+    <div class="header-left">
+        <h1>U.S. Temperature Changes</h1>
+        <p class="sub">DS 4630 / CS 5630 — Milestone Prototype</p>
+    </div>
+
+    <nav class="nav-menu">
+        <button id="menu-btn" class="menu-button">☰ Menu</button>
+        <div id="menu-dropdown" class="dropdown">
+            <a href="#" id="about-link">About the Project</a>
+            <a href="#" id="data-link">Data Source</a>
+            <a href="./Documents/ProcessBook.pdf" target="_blank">Process Book (PDF)</a>
+        </div>
+    </nav>
 </header>
 
 <main class="layout">
     <section class="controls">
-        <!-- Primary Date Slider (acts as single-date in Avg mode; monthly/yearly via Data View) -->
         <label for="year">
             <span>Date:</span>
             <strong id="year-label">2000</strong>
         </label>
         <input type="range" id="year" min="1800" max="2020" step="1" value="2000" />
 
-        <!-- Unit Toggle -->
         <div class="unit-toggle">
             <label for="unit-toggle">
                 <span>Temperature Unit:</span>
@@ -38,7 +47,6 @@
             </label>
         </div>
 
-        <!-- Data View Toggle -->
         <div class="data-toggle">
             <label for="data-toggle">
                 <span>Data View:</span>
@@ -55,11 +63,9 @@
 
         <div class="legend" id="legend"></div>
 
-        <!-- ANALYTICS -->
         <section class="analytics">
             <h3>Analytics</h3>
 
-            <!-- Δ Temperature toggle -->
             <div class="display-toggle">
                 <label for="display-toggle">
                     <span>Display:</span>
@@ -74,7 +80,6 @@
                 </label>
             </div>
 
-            <!-- Base / End sliders -->
             <div class="range-row">
                 <span class="range-caption">Base:</span>
                 <input type="range" id="base-range" />
@@ -87,7 +92,6 @@
                 <strong id="end-label">Jan-2000</strong>
             </div>
 
-            <!-- Additional Analytics Toggles (below sliders) -->
             <div class="extra-analytics">
                 <div class="max-toggle">
                     <label for="max-toggle">
@@ -114,8 +118,6 @@
                 </div>
             </div>
         </section>
-
-
     </section>
 
     <section class="viz">
@@ -134,5 +136,100 @@
 </footer>
 
 <script src="./script.js?v=4"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // === MENU TOGGLE ===
+        const menuBtn = document.getElementById('menu-btn');
+        const dropdown = document.getElementById('menu-dropdown');
+
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        window.addEventListener('click', (e) => {
+            if (!menuBtn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // === MODAL HANDLERS ===
+        const aboutLink = document.getElementById('about-link');
+        const dataLink = document.getElementById('data-link');
+        const aboutModal = document.getElementById('about-modal');
+        const dataModal = document.getElementById('data-modal');
+        const closeBtns = document.querySelectorAll('.modal-close');
+
+        if (aboutLink && aboutModal) {
+            aboutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                aboutModal.classList.add('show');
+                dropdown.classList.remove('show');
+            });
+        }
+
+        if (dataLink && dataModal) {
+            dataLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                dataModal.classList.add('show');
+                dropdown.classList.remove('show');
+            });
+        }
+
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.modal').classList.remove('show');
+            });
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal.show');
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+    });
+</script>
+<!-- ===== ABOUT MODAL ===== -->
+<div id="about-modal" class="modal">
+    <div class="modal-content">
+        <button class="modal-close">×</button>
+        <h2>About This Project</h2>
+        <p><strong>Course:</strong> Visualization for Data Science (DS 4630 / CS 5630)<br>
+            <strong>Semester:</strong> Fall 2025<br>
+            <strong>Instructor:</strong> Dr. Paul Rosen<br>
+            <strong>Authors:</strong> Katelyn Abraham, James Crawford, Max Terranova</p>
+
+        <p>Our first objective is to track how average temperatures in the United States have changed from the 19th
+            century through today. Looking this far back lets us contextualize recent warming in the broader scope of
+            history, rather than just the last few decades. By extending the timeline to the early 1800s, we capture key
+            historical periods: the Industrial Revolution, the Second Industrial Revolution, and even the tail end of the
+            Little Ice Age, when cooler conditions still shaped much of the Northern Hemisphere. This longer view makes it
+            possible to see whether the shifts of the past century stand apart from natural variations or fit into a broader
+            global trend. Using the Berkeley Earth dataset, which brings together millions of historical temperature
+            records, we can trace those changes with enough resolution to show how today’s climate compares with that of the
+            earlier baseline.
+        </p>
+
+        <p>The second objective is to take what we find and make it understandable to people outside of climate science.
+            A lot of climate graphs are either overly technical or stripped down to the point of being unclear. We want
+            to avoid both of those extremes. Our plan is to build straightforward visuals such as line charts, heat
+            maps, and trend plots that show the main story without overwhelming the viewer. The idea is that someone
+            looking at our charts should walk away with a clearer picture of how U.S. temperatures have shifted without
+            needing to dig through a scientific paper to get there.
+        </p>
+    </div>
+</div>
+
+<!-- ===== DATA SOURCE MODAL ===== -->
+<div id="data-modal" class="modal">
+    <div class="modal-content">
+        <button class="modal-close">×</button>
+        <h2>Data Source</h2>
+        <p>This project draws from the <strong>Berkeley Earth Surface Temperature Data</strong> compiled on Kaggle. The dataset consolidates millions of land-based and marine temperature records into a continuous global timeseries extending back to the 18th century. It provides a robust foundation for analyzing regional and historical temperature shifts with monthly and yearly granularity.</p>
+        <p><a href="https://www.kaggle.com/datasets/berkeleyearth/climate-change-earth-surface-temperature-data" target="_blank">View dataset on Kaggle →</a></p>
+    </div>
+</div>
+
 </body>
 </html>
