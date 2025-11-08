@@ -7,6 +7,11 @@ const yearInput = d3.select("#year");
 const yearLabel = d3.select("#year-label");
 const unitToggle = d3.select("#unit-toggle");
 const dataToggle = d3.select("#data-toggle");
+const maxToggle = d3.select("#max-toggle");
+const minToggle = d3.select("#min-toggle");
+let analyticsMode = "average"; // "average" | "delta" | "max" | "min"
+
+
 
 const projection = d3.geoAlbersUsa().scale(1200).translate([width / 2, height / 2]);
 const path = d3.geoPath().projection(projection);
@@ -85,18 +90,85 @@ function drawMap() {
 }
 
 function updateMap(selected) {
-    let dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
-    const key = currentUnit === "F"
-        ? (currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
-        : (currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
+    // Determine active analytics mode (backward-compatible with older displayMode)
+    const mode = (typeof analyticsMode === "string")
+        ? analyticsMode
+        : (typeof displayMode === "string" && displayMode === "delta" ? "delta" : "average");
 
-    if (displayMode === "average") {
+    // ---- MAX / MIN ANALYTICS ----
+    if (mode === "max" || mode === "min") {
+        const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
+        const key = currentUnit === "F"
+            ? (currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
+            : (currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
+
+        const stateExtremes = new Map();
+        const byState = d3.group(dataset, d => d.State);
+
+        byState.forEach((records, state) => {
+            const valid = records.filter(r => r[key] != null && !isNaN(r[key]));
+            if (!valid.length) return;
+            const extremeVal = (mode === "max")
+                ? d3.max(valid, r => r[key])
+                : d3.min(valid, r => r[key]);
+            const rec = valid.find(r => r[key] === extremeVal);
+            stateExtremes.set(state, rec);
+        });
+
+        const allVals = Array.from(stateExtremes.values()).map(r => r[key]).filter(v => v != null && !isNaN(v));
+        const [minVal, maxVal] = allVals.length ? d3.extent(allVals) : [0, 1];
+        const scale = currentUnit === "F" ? colorScaleF : colorScaleC;
+        scale.domain([minVal, maxVal]);
+
+        svg.selectAll(".state")
+            .transition().duration(400)
+            .attr("fill", d => {
+                const rec = stateExtremes.get(d.properties.name);
+                return rec && rec[key] != null && !isNaN(rec[key]) ? scale(rec[key]) : "#555";
+            });
+
+        buildLegend("average", scale);
+
+        // Override tooltip for max/min modes only
+        svg.selectAll(".state")
+            .on("mousemove", (event, d) => {
+                const rec = stateExtremes.get(d.properties.name);
+                if (!rec || rec[key] == null || isNaN(rec[key])) {
+                    tooltip.html(`<strong>${d.properties.name}</strong><br>No data found`);
+                } else {
+                    const label = currentDataset === "yearly"
+                        ? `Date: ${rec.Year}`
+                        : `Date: ${monName(rec.Month)}-${rec.Year}`;
+                    tooltip.html(
+                        `<strong>${d.properties.name}</strong><br>` +
+                        `${mode === "max" ? "Max" : "Min"} Temp: ${rec[key].toFixed(2)} °${currentUnit}<br>${label}`
+                    );
+                }
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top",  (event.pageY - 28) + "px")
+                    .style("opacity", 1);
+            })
+            .on("mouseleave", () => tooltip.style("opacity", 0));
+
+        return;
+    }
+
+    // ---- AVERAGE MODE ----
+    if (mode === "average") {
+        const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
+        const key = currentUnit === "F"
+            ? (currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
+            : (currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
+
         let year, month;
-        if (currentDataset === "yearly") year = +selected;
-        else {
-            const [m, y] = selected.split("-").map(Number);
+        if (currentDataset === "yearly") {
+            year = +selected;
+        } else {
+            const [m, y] = String(selected).split("-").map(Number);
             year = y; month = m;
         }
+
         const filtered = currentDataset === "yearly"
             ? dataset.filter(d => d.Year === year)
             : dataset.filter(d => d.Year === year && d.Month === month);
@@ -112,49 +184,64 @@ function updateMap(selected) {
             });
 
         buildLegend("average", scale);
+
+        // Restore default tooltip behavior for non-max/min modes
+        svg.selectAll(".state")
+            .on("mousemove", handleMouseMove)
+            .on("mouseleave", handleMouseLeave);
+
         return;
     }
 
-    const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
-    const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
-    const keyUse = currentUnit === "F" ? keyF : keyC;
+    // ---- DELTA MODE ----
+    {
+        const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
+        const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
+        const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
+        const keyUse = currentUnit === "F" ? keyF : keyC;
 
-    const baseRows = currentDataset === "yearly"
-        ? dataset.filter(d => d.Year === baseYear)
-        : dataset.filter(d => d.Year === baseYear && d.Month === baseMonth);
-    const endRows = currentDataset === "yearly"
-        ? dataset.filter(d => d.Year === endYear)
-        : dataset.filter(d => d.Year === endYear && d.Month === endMonth);
+        const baseRows = currentDataset === "yearly"
+            ? dataset.filter(d => d.Year === baseYear)
+            : dataset.filter(d => d.Year === baseYear && d.Month === baseMonth);
+        const endRows = currentDataset === "yearly"
+            ? dataset.filter(d => d.Year === endYear)
+            : dataset.filter(d => d.Year === endYear && d.Month === endMonth);
 
-    const baseMap = new Map(baseRows.map(d => [d.State, d[keyUse]]));
-    const endMap = new Map(endRows.map(d => [d.State, d[keyUse]]));
+        const baseMap = new Map(baseRows.map(d => [d.State, d[keyUse]]));
+        const endMap  = new Map(endRows.map(d => [d.State, d[keyUse]]));
 
-    const deltas = [];
-    mapData.forEach(f => {
-        const s = f.properties.name;
-        const b = baseMap.get(s);
-        const e = endMap.get(s);
-        if (b != null && e != null && !isNaN(b) && !isNaN(e)) deltas.push(e - b);
-    });
-
-    const [dmin, dmax] = deltas.length ? d3.extent(deltas) : [-5, 5];
-    const maxAbs = Math.max(Math.abs(dmin), Math.abs(dmax));
-    const deltaScale = d3.scaleSequential()
-        .domain([maxAbs, -maxAbs]) // flipped so red = warmer, blue = cooler
-        .interpolator(d3.interpolateRdBu)
-        .clamp(true);
-
-    svg.selectAll(".state")
-        .transition().duration(350)
-        .attr("fill", d => {
-            const s = d.properties.name;
+        const deltas = [];
+        mapData.forEach(f => {
+            const s = f.properties.name;
             const b = baseMap.get(s);
             const e = endMap.get(s);
-            if (b == null || e == null || isNaN(b) || isNaN(e)) return "#666";
-            return deltaScale(e - b);
+            if (b != null && e != null && !isNaN(b) && !isNaN(e)) deltas.push(e - b);
         });
 
-    buildLegendDelta(deltaScale);
+        const [dmin, dmax] = deltas.length ? d3.extent(deltas) : [-5, 5];
+        const maxAbs = Math.max(Math.abs(dmin), Math.abs(dmax));
+        const deltaScale = d3.scaleSequential()
+            .domain([maxAbs, -maxAbs]) // flipped: blue=cooler (neg), red=warmer (pos)
+            .interpolator(d3.interpolateRdBu)
+            .clamp(true);
+
+        svg.selectAll(".state")
+            .transition().duration(350)
+            .attr("fill", d => {
+                const s = d.properties.name;
+                const b = baseMap.get(s);
+                const e = endMap.get(s);
+                if (b == null || e == null || isNaN(b) || isNaN(e)) return "#666";
+                return deltaScale(e - b);
+            });
+
+        buildLegendDelta(deltaScale);
+
+        // Restore default tooltip (it already handles delta branch)
+        svg.selectAll(".state")
+            .on("mousemove", handleMouseMove)
+            .on("mouseleave", handleMouseLeave);
+    }
 }
 
 function handleMouseOver() { tooltip.style("opacity", 1); }
@@ -270,21 +357,34 @@ dataToggle.on("change", e => {
     updateMap(currentValue);
 });
 
-displayToggle.on("change", e => {
-    displayMode = e.target.checked ? "delta" : "average";
+function setAnalyticsMode(mode) {
+    analyticsMode = mode;
+    // Reset all toggles
+    displayToggle.property("checked", mode === "delta");
+    maxToggle.property("checked", mode === "max");
+    minToggle.property("checked", mode === "min");
+
+    // Disable main slider for delta mode only
     const mainSlider = document.querySelector("#year, #monthyear");
-    if (mainSlider) {
-        mainSlider.disabled = displayMode === "delta";
-        mainSlider.style.opacity = displayMode === "delta" ? "0.4" : "1.0";
-        mainSlider.style.pointerEvents = displayMode === "delta" ? "none" : "auto";
-    }
+    const isDelta = mode === "delta";
+    mainSlider.disabled = isDelta;
+    mainSlider.style.opacity = isDelta ? "0.4" : "1.0";
+    mainSlider.style.pointerEvents = isDelta ? "none" : "auto";
+
+    // Show/hide base/end sliders
     const baseRowEl = document.querySelector(".range-row");
     const endRowEl = document.getElementById("end-row");
-    baseRowEl.style.display = displayMode === "delta" ? "grid" : "none";
-    endRowEl.style.display = displayMode === "delta" ? "grid" : "none";
-    if (displayMode === "delta") initAnalyticsSliders();
+    baseRowEl.style.display = isDelta ? "grid" : "none";
+    endRowEl.style.display = isDelta ? "grid" : "none";
+
     updateMap(currentValue);
-});
+}
+
+// Event listeners
+displayToggle.on("change", e => setAnalyticsMode(e.target.checked ? "delta" : "average"));
+maxToggle.on("change", e => setAnalyticsMode(e.target.checked ? "max" : "average"));
+minToggle.on("change", e => setAnalyticsMode(e.target.checked ? "min" : "average"));
+
 
 baseRange.on("input", e => {
     if (currentDataset === "yearly") {

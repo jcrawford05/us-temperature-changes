@@ -59,7 +59,7 @@
         <section class="analytics">
             <h3>Analytics</h3>
 
-            <!-- Δ Temperature toggle (ONLY toggle; old duplicate removed) -->
+            <!-- Δ Temperature toggle -->
             <div class="display-toggle">
                 <label for="display-toggle">
                     <span>Display:</span>
@@ -74,7 +74,7 @@
                 </label>
             </div>
 
-            <!-- Base / End sliders (side-by-side label style) -->
+            <!-- Base / End sliders -->
             <div class="range-row">
                 <span class="range-caption">Base:</span>
                 <input type="range" id="base-range" />
@@ -86,7 +86,36 @@
                 <input type="range" id="end-range" />
                 <strong id="end-label">Jan-2000</strong>
             </div>
+
+            <!-- Additional Analytics Toggles (below sliders) -->
+            <div class="extra-analytics">
+                <div class="max-toggle">
+                    <label for="max-toggle">
+                        <span>Max Temp:</span>
+                        <div class="toggle-container">
+                            <label class="switch">
+                                <input type="checkbox" id="max-toggle" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="min-toggle">
+                    <label for="min-toggle">
+                        <span>Min Temp:</span>
+                        <div class="toggle-container">
+                            <label class="switch">
+                                <input type="checkbox" id="min-toggle" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </label>
+                </div>
+            </div>
         </section>
+
+
     </section>
 
     <section class="viz">
