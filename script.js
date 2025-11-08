@@ -16,8 +16,8 @@ let analyticsMode = "average"; // "average" | "delta" | "max" | "min"
 const projection = d3.geoAlbersUsa().scale(1200).translate([width / 2, height / 2]);
 const path = d3.geoPath().projection(projection);
 
-const colorScaleF = d3.scaleSequential().domain([40, 90]).interpolator(d3.interpolateTurbo);
-const colorScaleC = d3.scaleSequential().domain([4, 32]).interpolator(d3.interpolateTurbo);
+const colorScaleF = d3.scaleSequential().domain([0, 100]).interpolator(d3.interpolateTurbo);
+const colorScaleC = d3.scaleSequential().domain([-18, 38]).interpolator(d3.interpolateTurbo);
 
 let mapData, tempData = {};
 let currentDataset = "yearly";
@@ -36,7 +36,7 @@ let baseYear = 1800, baseMonth = 1;
 let endYear = 2000, endMonth = 1;
 
 const START_YEAR = 1800;
-const END_YEAR = 2020;
+const END_YEAR = 2012;
 
 const idxFromYM = (y, m) => (y - START_YEAR) * 12 + (m - 1);
 const ymFromIdx = i => [START_YEAR + Math.floor(i / 12), (i % 12) + 1];
@@ -238,9 +238,28 @@ function updateMap(selected) {
         buildLegendDelta(deltaScale);
 
         // Restore default tooltip (it already handles delta branch)
+        // Custom Δ Temp tooltip
         svg.selectAll(".state")
-            .on("mousemove", handleMouseMove)
-            .on("mouseleave", handleMouseLeave);
+            .on("mousemove", (event, d) => {
+                const b = baseMap.get(d.properties.name);
+                const e = endMap.get(d.properties.name);
+                if (b == null || e == null || isNaN(b) || isNaN(e)) {
+                    tooltip.html(`<strong>${d.properties.name}</strong><br>No data available for comparison`);
+                } else {
+                    const delta = e - b;
+                    tooltip.html(
+                        `<strong>${d.properties.name}</strong><br>` +
+                        `Δ Temp (${fmtLabel(baseYear, baseMonth, currentDataset === "monthly")} → ${fmtLabel(endYear, endMonth, currentDataset === "monthly")}): ` +
+                        `${delta >= 0 ? "+" : ""}${delta.toFixed(2)} °${currentUnit}`
+                    );
+                }
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top",  (event.pageY - 28) + "px")
+                    .style("opacity", 1);
+            })
+            .on("mouseleave", () => tooltip.style("opacity", 0));
+
     }
 }
 
@@ -359,23 +378,27 @@ dataToggle.on("change", e => {
 
 function setAnalyticsMode(mode) {
     analyticsMode = mode;
-    // Reset all toggles
+
+    // Reset toggles
     displayToggle.property("checked", mode === "delta");
     maxToggle.property("checked", mode === "max");
     minToggle.property("checked", mode === "min");
 
-    // Disable main slider for delta mode only
+    // Determine if slider should be disabled
+    const disableMainSlider = mode === "delta" || mode === "max" || mode === "min";
     const mainSlider = document.querySelector("#year, #monthyear");
-    const isDelta = mode === "delta";
-    mainSlider.disabled = isDelta;
-    mainSlider.style.opacity = isDelta ? "0.4" : "1.0";
-    mainSlider.style.pointerEvents = isDelta ? "none" : "auto";
 
-    // Show/hide base/end sliders
+    if (mainSlider) {
+        mainSlider.disabled = disableMainSlider;
+        mainSlider.style.opacity = disableMainSlider ? "0.4" : "1.0";
+        mainSlider.style.pointerEvents = disableMainSlider ? "none" : "auto";
+    }
+
+    // Only show Base/End sliders for Delta mode
     const baseRowEl = document.querySelector(".range-row");
     const endRowEl = document.getElementById("end-row");
-    baseRowEl.style.display = isDelta ? "grid" : "none";
-    endRowEl.style.display = isDelta ? "grid" : "none";
+    baseRowEl.style.display = mode === "delta" ? "grid" : "none";
+    endRowEl.style.display = mode === "delta" ? "grid" : "none";
 
     updateMap(currentValue);
 }
