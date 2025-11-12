@@ -3,26 +3,29 @@ Things to modify/add:
 Country Page:
 
 	Avg Temp:
-	- Dynamically change the legend temp range to match the min and max temp for that period
-	- If no data exists, make the tooltip state that no data exists and the color is set to grey
+	- Increase the temp range for the map
+	- If no data exists, make the tooltip state that no data exists and the color is set to grey (complete)
+	- Add a play button to the data slider so the user can see how time changes
 
 	Delta Temp:
-	- If no data exists, make the tooltip state that no data exists and the color is set to grey
-	- Grey out the Top data slider when the bottom sliders are being used
-	- remove the delta sliders when the delta feature is not being used
+	- If no data exists, make the tooltip state that no data exists and the color is set to grey (complete)
+	- Grey out the Top data slider when the bottom sliders are being used (complete)
+	- remove the delta sliders when the delta feature is not being used (complete)
 
 State Page:
 	-Fix the null data labels in the primary plot
 	-Fix the primary plot label spacing
-	-Fix the x axis spacing on the line graph
-	-Comparison tool (not looking forward to that)
-	-City Temps page (plot these)
-	
+	-Fix the x-axis spacing on the line graph, x-axis not visible
+	-Comparison tool
+	-Plot the City Temps on state plot
+	-Add a general state data infographic
+	    -State Name
+	    -Avg annual temp
+	    -Max annual avg and monthly avg (hotest month/ year on record)
+	    -Min annual avg and monthly avg (hotest month/ year on record)
+	    -Whatever else might fit there
+    -Add a cities table, showing that citites data for the given month/year
+    -Add trend lines and report the slope of the trend line on the line plot
 
 General fixes:
-- add a light mode
-- add dropdowns for:
-	-feature lists
-	-credits (us)
-	-data sources
-	-link to project book
+- add a light mode (non-critical)
