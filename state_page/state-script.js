@@ -508,11 +508,36 @@ function drawLineChart(data, mode) {
 
     svgLine.selectAll("*").remove();
 
+    // --------------------------------------------------
+    // Determine correct key (F/C, yearly/monthly)
+    // --------------------------------------------------
     const key =
         currentUnit === "F"
             ? (mode === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
             : (mode === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
 
+    // --------------------------------------------------
+    // FILTER OUT bad values for the entire chart
+    // --------------------------------------------------
+    let cleanData = data.filter(d =>
+        d[key] != null &&
+        !isNaN(d[key]) &&
+        d[key] !== 0
+    );
+
+    if (cleanData.length < 2) {
+        svgLine.append("text")
+            .attr("x", 20)
+            .attr("y", 40)
+            .attr("fill", "var(--muted)")
+            .attr("font-size", "16px")
+            .text("Not enough data available for this state.");
+        return;
+    }
+
+    // --------------------------------------------------
+    // Chart layout
+    // --------------------------------------------------
     const margin = { top: 40, right: 30, bottom: 85, left: 60 };
     const widthLC = 980 - margin.left - margin.right;
     const heightLC = 300 - margin.top - margin.bottom;
@@ -520,47 +545,135 @@ function drawLineChart(data, mode) {
     const g = svgLine.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const parseIndex = d => (d.Year - START_YEAR) * 12 + d.Month - 1;
+    const parseIndex = d => (d.Year - START_YEAR) * 12 + (d.Month - 1);
 
+    // --------------------------------------------------
+    // X scale + axis
+    // --------------------------------------------------
     let x, xAxis;
 
     if (mode === "yearly") {
         x = d3.scaleLinear()
-            .domain(d3.extent(data, d => d.Year))
+            .domain(d3.extent(cleanData, d => d.Year))
             .range([0, widthLC]);
 
         xAxis = d3.axisBottom(x).tickFormat(d3.format("d"));
 
     } else {
         x = d3.scaleLinear()
-            .domain(d3.extent(data, parseIndex))
+            .domain(d3.extent(cleanData, parseIndex))
             .range([0, widthLC]);
 
-        xAxis = d3.axisBottom(x).ticks(10).tickFormat(i => {
-            const y = START_YEAR + Math.floor(i / 12);
-            const m = (i % 12) + 1;
-            return `${monthName(m)} ${y}`;
-        });
+        xAxis = d3.axisBottom(x)
+            .ticks(10)
+            .tickFormat(i => {
+                const y = START_YEAR + Math.floor(i / 12);
+                const m = (i % 12) + 1;
+                return `${monthName(m)} ${y}`;
+            });
     }
 
+    // --------------------------------------------------
+    // Y scale
+    // --------------------------------------------------
     const y = d3.scaleLinear()
-        .domain(d3.extent(data, d => d[key])).nice()
+        .domain(d3.extent(cleanData, d => d[key])).nice()
         .range([heightLC, 0]);
 
+    // --------------------------------------------------
+    // Line generator
+    // --------------------------------------------------
     const line = d3.line()
         .x(d => (mode === "yearly" ? x(d.Year) : x(parseIndex(d))))
         .y(d => y(d[key]));
 
+    // --------------------------------------------------
+    // Draw line
+    // --------------------------------------------------
     g.append("path")
-        .datum(data)
+        .datum(cleanData)
         .attr("fill", "none")
         .attr("stroke", "var(--accent)")
         .attr("stroke-width", 1.8)
         .attr("d", line);
 
+    // --------------------------------------------------
+    // Axes
+    // --------------------------------------------------
     g.append("g")
         .attr("transform", `translate(0,${heightLC})`)
         .call(xAxis);
 
     g.append("g").call(d3.axisLeft(y));
+
+    // ====================================================================
+    // TREND LINE (regression)
+    // ====================================================================
+
+    let rawX, rawY;
+
+    if (mode === "yearly") {
+        rawX = cleanData.map(d => d.Year);
+        rawY = cleanData.map(d => d[key]);
+    } else {
+        rawX = cleanData.map(parseIndex);
+        rawY = cleanData.map(d => d[key]);
+    }
+
+    // Filter again for trend specifically
+    const filtered = rawX
+        .map((xv, i) => ({ x: xv, y: rawY[i] }))
+        .filter(p => p.y !== 0 && !isNaN(p.y) && p.y != null);
+
+    if (filtered.length < 2) {
+        g.append("text")
+            .attr("x", 8)
+            .attr("y", -10)
+            .attr("fill", "var(--muted)")
+            .attr("font-size", "13px")
+            .text("Trend: insufficient data");
+        return;
+    }
+
+    const xVals = filtered.map(p => p.x);
+    const yVals = filtered.map(p => p.y);
+
+    // Linear regression
+    const n = xVals.length;
+    const sumX = d3.sum(xVals);
+    const sumY = d3.sum(yVals);
+    const sumXY = d3.sum(xVals.map((d, i) => d * yVals[i]));
+    const sumXX = d3.sum(xVals.map(d => d * d));
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    const xStart = d3.min(xVals);
+    const xEnd   = d3.max(xVals);
+    const yStart = slope * xStart + intercept;
+    const yEnd   = slope * xEnd + intercept;
+
+    // Draw regression line
+    g.append("line")
+        .attr("x1", x(xStart))
+        .attr("y1", y(yStart))
+        .attr("x2", x(xEnd))
+        .attr("y2", y(yEnd))
+        .attr("stroke", "var(--muted)")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "6 4")
+        .attr("opacity", 0.9);
+
+    // Trend legend text
+    const unit = currentUnit;
+    const slopePer = (mode === "yearly") ? "per year" : "per month";
+    const slopeRounded = slope.toFixed(3);
+
+    g.append("text")
+        .attr("x", 8)
+        .attr("y", -10)
+        .attr("fill", "var(--muted)")
+        .attr("font-size", "13px")
+        .text(`Trend: ${slopeRounded} °${unit} ${slopePer}`);
 }
+
