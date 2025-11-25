@@ -47,7 +47,17 @@ let baseYear = 1800, baseMonth = 1;
 let endYear  = 2000, endMonth  = 1;
 
 const START_YEAR = 1800;
-const END_YEAR   = 2020;
+const END_YEAR   = 2013;
+
+// Comparison state (for line chart)
+let compareState = null;
+
+// Tooltip for line chart hover
+const lineTooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
 
 // SVGs
 const svgState = d3.select("#stateview");
@@ -119,6 +129,27 @@ Promise.all([
     const stateMonthly = monthly.filter(d => d.State === selectedState);
     const stateCities  = cities.filter(c => c.State === selectedState);
 
+    // ================================
+    // Comparison dropdown (line chart)
+    // ================================
+    const compareSelect = document.getElementById("compare-select");
+    if (compareSelect) {
+        const allStates = Array.from(new Set(monthly.map(d => d.State))).sort();
+
+        allStates.forEach(s => {
+            if (s === selectedState) return;
+            const opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s;
+            compareSelect.appendChild(opt);
+        });
+
+        compareSelect.addEventListener("change", e => {
+            compareState = e.target.value || null;
+            updateView();
+        });
+    }
+
     const totalMonths = (END_YEAR - START_YEAR + 1) * 12 - 1;
 
     monthYearInput
@@ -157,28 +188,59 @@ Promise.all([
     // View update logic
     // ------------------------------
     function updateView() {
-        if (currentDataset === "yearly") {
+        const mode = currentDataset === "yearly" ? "yearly" : "monthly";
+
+        let mainData;
+        if (mode === "yearly") {
             monthYearInput
                 .attr("min", START_YEAR)
                 .attr("max", END_YEAR)
                 .property("value", currentYear);
 
             monthYearLabel.text(currentYear);
-
-            drawStateMap(stateFeature, stateYearly, 1, currentYear, stateCities);
-            drawLineChart(stateYearly, "yearly");
-
+            mainData = stateYearly;
         } else {
             const idx = idxFromYM(currentYear, currentMonth);
             monthYearInput.property("value", idx);
 
             monthYearLabel.text(`${monthName(currentMonth)}-${currentYear}`);
-
-            drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear, stateCities);
-            drawLineChart(stateMonthly, "monthly");
+            mainData = stateMonthly;
         }
 
+        // Comparison data (if selected)
+        let compareData = null;
+        if (compareState) {
+            compareData = mode === "yearly"
+                ? yearly.filter(d => d.State === compareState)
+                : monthly.filter(d => d.State === compareState);
+        }
+
+        // Draw map (uses mainData only)
+        if (mode === "yearly") {
+            drawStateMap(stateFeature, mainData, 1, currentYear, stateCities);
+        } else {
+            drawStateMap(stateFeature, mainData, currentMonth, currentYear, stateCities);
+        }
+
+        // Draw line chart (main + compare)
+        drawLineChart(mainData, mode, compareData);
+
         initAnalyticsSliders();
+
+        // Stats panel (if you added updateStatsPanel earlier)
+        const mKey = currentUnit === "F" ? "AvgTemp_F" : "AvgTemp_C";
+        const yKey = currentUnit === "F" ? "AvgTemp_F_Yearly" : "AvgTemp_C_Yearly";
+
+        const cleanMonthly = stateMonthly
+            .filter(d => d[mKey] != null && d[mKey] !== 0 && !isNaN(d[mKey]))
+            .map(d => ({ Year: d.Year, Month: d.Month, value: d[mKey] }));
+
+        const cleanYearly = stateYearly
+            .filter(d => d[yKey] != null && d[yKey] !== 0 && !isNaN(d[yKey]));
+
+        if (typeof updateStatsPanel === "function") {
+            updateStatsPanel(cleanMonthly, cleanYearly, window.lastComputedSlope || null);
+        }
     }
 
     // ------------------------------
@@ -188,9 +250,6 @@ Promise.all([
         if (currentDataset === "yearly") {
             currentYear = +e.target.value;
             monthYearLabel.text(currentYear);
-            drawStateMap(stateFeature, stateYearly, 1, currentYear, stateCities);
-            drawLineChart(stateYearly, "yearly");
-
         } else {
             const index  = +e.target.value;
             const year   = START_YEAR + Math.floor(index / 12);
@@ -200,11 +259,11 @@ Promise.all([
             currentMonth = month;
 
             monthYearLabel.text(`${monthName(month)}-${year}`);
-
-            drawStateMap(stateFeature, stateMonthly, month, year, stateCities);
-            drawLineChart(stateMonthly, "monthly");
         }
+
+        updateView();
     });
+
 
     unitToggle.on("change", e => {
         currentUnit = e.target.checked ? "C" : "F";
@@ -523,21 +582,20 @@ function drawStateMap(stateFeature, data, month, year, stateCities) {
 // ========================================================================
 // LINE CHART
 // ========================================================================
-function drawLineChart(data, mode) {
+f// ========================================================================
+// LINE CHART (with comparison + hover)
+// ========================================================================
+function drawLineChart(data, mode, compareData = null) {
 
     svgLine.selectAll("*").remove();
 
-    // --------------------------------------------------
     // Determine correct key (F/C, yearly/monthly)
-    // --------------------------------------------------
     const key =
         currentUnit === "F"
             ? (mode === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F")
             : (mode === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C");
 
-    // --------------------------------------------------
-    // FILTER OUT bad values for the entire chart
-    // --------------------------------------------------
+    // FILTER OUT bad values for the main series
     let cleanData = data.filter(d =>
         d[key] != null &&
         !isNaN(d[key]) &&
@@ -554,9 +612,7 @@ function drawLineChart(data, mode) {
         return;
     }
 
-    // --------------------------------------------------
-    // Chart layout
-    // --------------------------------------------------
+    // Layout
     const margin = { top: 40, right: 30, bottom: 85, left: 60 };
     const widthLC = 980 - margin.left - margin.right;
     const heightLC = 300 - margin.top - margin.bottom;
@@ -566,9 +622,7 @@ function drawLineChart(data, mode) {
 
     const parseIndex = d => (d.Year - START_YEAR) * 12 + (d.Month - 1);
 
-    // --------------------------------------------------
     // X scale + axis
-    // --------------------------------------------------
     let x, xAxis;
 
     if (mode === "yearly") {
@@ -592,23 +646,30 @@ function drawLineChart(data, mode) {
             });
     }
 
-    // --------------------------------------------------
     // Y scale
-    // --------------------------------------------------
+    let allYValues = cleanData.map(d => d[key]);
+
+    if (compareData && compareData.length) {
+        const cKey = key;
+        const cleanCompare = compareData.filter(d =>
+            d[cKey] != null &&
+            !isNaN(d[cKey]) &&
+            d[cKey] !== 0
+        );
+        allYValues = allYValues.concat(cleanCompare.map(d => d[cKey]));
+    }
+
     const y = d3.scaleLinear()
-        .domain(d3.extent(cleanData, d => d[key])).nice()
+        .domain(d3.extent(allYValues)).nice()
         .range([heightLC, 0]);
 
-    // --------------------------------------------------
-    // Line generator
-    // --------------------------------------------------
+
+    // Main line generator
     const line = d3.line()
         .x(d => (mode === "yearly" ? x(d.Year) : x(parseIndex(d))))
         .y(d => y(d[key]));
 
-    // --------------------------------------------------
-    // Draw line
-    // --------------------------------------------------
+    // Main line
     g.append("path")
         .datum(cleanData)
         .attr("fill", "none")
@@ -616,9 +677,41 @@ function drawLineChart(data, mode) {
         .attr("stroke-width", 1.8)
         .attr("d", line);
 
-    // --------------------------------------------------
+    // Comparison line (if any)
+    let comparePoints = [];
+
+    if (compareData && compareData.length) {
+        const cKey = key; // same field as main
+
+        const cleanCompare = compareData.filter(d =>
+            d[cKey] != null &&
+            !isNaN(d[cKey]) &&
+            d[cKey] !== 0
+        );
+
+        if (cleanCompare.length > 1) {
+            const lineCompare = d3.line()
+                .x(d => (mode === "yearly" ? x(d.Year) : x(parseIndex(d))))
+                .y(d => y(d[cKey]));
+
+            g.append("path")
+                .datum(cleanCompare)
+                .attr("fill", "none")
+                .attr("stroke", "var(--muted)")
+                .attr("stroke-width", 1.4)
+                .attr("stroke-dasharray", "4 3")
+                .attr("d", lineCompare);
+
+            comparePoints = cleanCompare.map(d => ({
+                Year: d.Year,
+                Month: d.Month,
+                value: d[cKey],
+                xVal: mode === "yearly" ? d.Year : parseIndex(d)
+            }));
+        }
+    }
+
     // Axes
-    // --------------------------------------------------
     g.append("g")
         .attr("transform", `translate(0,${heightLC})`)
         .call(xAxis);
@@ -626,38 +719,18 @@ function drawLineChart(data, mode) {
     g.append("g").call(d3.axisLeft(y));
 
     // ====================================================================
-    // TREND LINE (regression)
+    // Trend line (regression) on main series
     // ====================================================================
+    const mainPoints = cleanData.map(d => ({
+        Year: d.Year,
+        Month: d.Month,
+        value: d[key],
+        xVal: mode === "yearly" ? d.Year : parseIndex(d)
+    }));
 
-    let rawX, rawY;
+    const xVals = mainPoints.map(p => p.xVal);
+    const yVals = mainPoints.map(p => p.value);
 
-    if (mode === "yearly") {
-        rawX = cleanData.map(d => d.Year);
-        rawY = cleanData.map(d => d[key]);
-    } else {
-        rawX = cleanData.map(parseIndex);
-        rawY = cleanData.map(d => d[key]);
-    }
-
-    // Filter again for trend specifically
-    const filtered = rawX
-        .map((xv, i) => ({ x: xv, y: rawY[i] }))
-        .filter(p => p.y !== 0 && !isNaN(p.y) && p.y != null);
-
-    if (filtered.length < 2) {
-        g.append("text")
-            .attr("x", 8)
-            .attr("y", -10)
-            .attr("fill", "var(--muted)")
-            .attr("font-size", "13px")
-            .text("Trend: insufficient data");
-        return;
-    }
-
-    const xVals = filtered.map(p => p.x);
-    const yVals = filtered.map(p => p.y);
-
-    // Linear regression
     const n = xVals.length;
     const sumX = d3.sum(xVals);
     const sumY = d3.sum(yVals);
@@ -667,12 +740,13 @@ function drawLineChart(data, mode) {
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
+    window.lastComputedSlope = slope; // for stats panel
+
     const xStart = d3.min(xVals);
     const xEnd   = d3.max(xVals);
     const yStart = slope * xStart + intercept;
     const yEnd   = slope * xEnd + intercept;
 
-    // Draw regression line
     g.append("line")
         .attr("x1", x(xStart))
         .attr("y1", y(yStart))
@@ -683,7 +757,6 @@ function drawLineChart(data, mode) {
         .attr("stroke-dasharray", "6 4")
         .attr("opacity", 0.9);
 
-    // Trend legend text
     const unit = currentUnit;
     const slopePer = (mode === "yearly") ? "per year" : "per month";
     const slopeRounded = slope.toFixed(3);
@@ -694,6 +767,107 @@ function drawLineChart(data, mode) {
         .attr("fill", "var(--muted)")
         .attr("font-size", "13px")
         .text(`Trend: ${slopeRounded} °${unit} ${slopePer}`);
+
+    // ====================================================================
+    // Hover: vertical line + dots + tooltip
+    // ====================================================================
+    const hoverLine = g.append("line")
+        .attr("class", "hover-line")
+        .attr("stroke", "var(--muted)")
+        .attr("stroke-width", 1)
+        .attr("y1", 0)
+        .attr("y2", heightLC)
+        .style("opacity", 0);
+
+    const mainDot = g.append("circle")
+        .attr("class", "hover-dot-main")
+        .attr("r", 4)
+        .attr("fill", "var(--accent)")
+        .attr("stroke", "var(--card)")
+        .attr("stroke-width", 1.2)
+        .style("opacity", 0);
+
+    const compareDot = g.append("circle")
+        .attr("class", "hover-dot-compare")
+        .attr("r", 4)
+        .attr("fill", "var(--muted)")
+        .attr("stroke", "var(--card)")
+        .attr("stroke-width", 1.2)
+        .style("opacity", 0);
+
+    const overlay = g.append("rect")
+        .attr("class", "hover-overlay")
+        .attr("width", widthLC)
+        .attr("height", heightLC)
+        .style("fill", "none")
+        .style("pointer-events", "all")
+        .on("mouseover", () => {
+            hoverLine.style("opacity", 1);
+            mainDot.style("opacity", 1);
+        })
+        .on("mouseout", () => {
+            hoverLine.style("opacity", 0);
+            mainDot.style("opacity", 0);
+            compareDot.style("opacity", 0);
+            lineTooltip.style("opacity", 0);
+        })
+        .on("mousemove", (event) => {
+            const [mx, my] = d3.pointer(event, g.node());
+
+            if (mx < 0 || mx > widthLC || my < 0 || my > heightLC) {
+                return;
+            }
+
+            const xRaw = x.invert(mx);
+            const closest = d3.least(mainPoints, p => Math.abs(p.xVal - xRaw));
+            if (!closest) return;
+
+            const cx = x(closest.xVal);
+            const cy = y(closest.value);
+
+            hoverLine
+                .attr("x1", cx)
+                .attr("x2", cx);
+
+            mainDot
+                .attr("cx", cx)
+                .attr("cy", cy)
+                .style("opacity", 1);
+
+            let compareInfo = null;
+            if (comparePoints.length) {
+                const cp = comparePoints.find(p =>
+                    p.Year === closest.Year &&
+                    (mode === "yearly" || p.Month === closest.Month)
+                );
+                if (cp) {
+                    compareDot
+                        .attr("cx", cx)
+                        .attr("cy", y(cp.value))
+                        .style("opacity", 1);
+                    compareInfo = cp;
+                } else {
+                    compareDot.style("opacity", 0);
+                }
+            } else {
+                compareDot.style("opacity", 0);
+            }
+
+            const dateLabel = mode === "yearly"
+                ? `${closest.Year}`
+                : `${monthName(closest.Month)} ${closest.Year}`;
+
+            let html = `<strong>${dateLabel}</strong><br>${selectedState}: ${closest.value.toFixed(2)} °${unit}`;
+            if (compareState && compareInfo) {
+                html += `<br>${compareState}: ${compareInfo.value.toFixed(2)} °${unit}`;
+            }
+
+            lineTooltip
+                .style("opacity", 1)
+                .html(html)
+                .style("left", (event.pageX + 12) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        });
 }
 
 // ========================================================================

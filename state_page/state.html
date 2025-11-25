@@ -177,8 +177,19 @@
 
     <section class="detail">
         <h2 id="detail-title">Temperature Trend</h2>
+
+        <div class="chart-toolbar">
+            <label for="compare-select">
+                Compare:
+                <select id="compare-select">
+                    <option value="">None</option>
+                </select>
+            </label>
+        </div>
+
         <svg id="linechart" width="980" height="400" role="img" aria-label="State temperature trend"></svg>
     </section>
+
 </main>
 
 <footer class="app-footer">

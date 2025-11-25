@@ -546,3 +546,21 @@ input:checked + .slider:before {
     border-top: 1px solid var(--border);
     margin: 10px 0;
 }
+
+.chart-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.chart-toolbar select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: var(--text);
+}
