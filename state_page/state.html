@@ -92,15 +92,104 @@
         </section>
     </section>
 
-    <section class="state-detail">
-        <h2 id="state-title">Loading state data...</h2>
-        <svg id="stateview" width="980" height="600" role="img" aria-label="Focused state view"></svg>
+    <!-- ================================
+         TOP SECTION: MAP + STATS
+    ================================ -->
+    <section class="state-top">
+
+        <!-- LEFT SIDE: MAP BLOCK -->
+        <div class="state-map-block">
+            <h2 id="state-title">Loading state data...</h2>
+            <svg id="stateview" width="980" height="600" role="img" aria-label="Focused state view"></svg>
+        </div>
+
+        <!-- RIGHT SIDE: STATS BLOCK -->
+        <div class="state-stats-block">
+            <h2 class="stats-header">State Statistics</h2>
+
+            <div class="stats-item">
+                <span class="stats-label">State:</span>
+                <span id="stat-state-name" class="stats-value">—</span>
+            </div>
+
+            <hr class="stats-separator">
+
+            <div class="stats-item">
+                <span class="stats-label">Avg Temperature (All Time):</span>
+                <span id="stat-avg-temp" class="stats-value">—</span>
+            </div>
+
+            <div class="stats-item">
+                <span class="stats-label">Rate of Change:</span>
+                <span id="stat-rate-change" class="stats-value">—</span>
+            </div>
+
+            <hr class="stats-separator">
+
+            <div class="stats-item">
+                <span class="stats-label">Hottest Year:</span>
+                <span id="stat-hottest-year" class="stats-value">—</span>
+            </div>
+
+            <div class="stats-item">
+                <span class="stats-label">Coldest Year:</span>
+                <span id="stat-coldest-year" class="stats-value">—</span>
+            </div>
+
+            <hr class="stats-separator">
+
+            <div class="stats-item">
+                <span class="stats-label">Hottest Month:</span>
+                <span id="stat-hottest-month" class="stats-value">—</span>
+            </div>
+
+            <div class="stats-item">
+                <span class="stats-label">Coldest Month:</span>
+                <span id="stat-coldest-month" class="stats-value">—</span>
+            </div>
+
+            <hr class="stats-separator">
+
+            <div class="stats-item">
+                <span class="stats-label">Largest Yearly Fluctuation:</span>
+                <span id="stat-biggest-fluct" class="stats-value">—</span>
+            </div>
+
+            <hr class="stats-separator">
+
+            <div class="stats-item">
+                <span class="stats-label">Data Coverage:</span>
+                <span id="stat-data-range" class="stats-value">—</span>
+            </div>
+
+            <div class="stats-item">
+                <span class="stats-label">Total Change Since First Year:</span>
+                <span id="stat-total-change" class="stats-value">—</span>
+            </div>
+
+            <div class="stats-item">
+                <span class="stats-label">Variability (Std Dev):</span>
+                <span id="stat-variability" class="stats-value">—</span>
+            </div>
+
+        </div>
     </section>
 
     <section class="detail">
         <h2 id="detail-title">Temperature Trend</h2>
+
+        <div class="chart-toolbar">
+            <label for="compare-select">
+                Compare:
+                <select id="compare-select">
+                    <option value="">None</option>
+                </select>
+            </label>
+        </div>
+
         <svg id="linechart" width="980" height="400" role="img" aria-label="State temperature trend"></svg>
     </section>
+
 </main>
 
 <footer class="app-footer">
