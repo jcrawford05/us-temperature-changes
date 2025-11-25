@@ -486,3 +486,63 @@ input:checked + .slider:before {
 .modal-close:hover {
     color: var(--accent);
 }
+
+/* ================================
+   STATE TOP GRID
+================================ */
+.state-top {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    width: 100%;
+}
+
+/* Map block */
+.state-map-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+/* Stats block */
+.state-stats-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 600px;
+}
+
+.stats-header {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Individual rows */
+.stats-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.stats-label {
+    color: var(--muted);
+}
+
+.stats-value {
+    color: var(--text);
+    font-weight: 500;
+}
+
+/* Visual separators */
+.stats-separator {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 10px 0;
+}

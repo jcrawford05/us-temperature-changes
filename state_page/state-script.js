@@ -130,6 +130,27 @@ Promise.all([
 
     drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear, stateCities);
     drawLineChart(stateMonthly, "monthly");
+    // Compute clean filtered datasets for stats
+    const mKey = currentUnit === "F" ? "AvgTemp_F" : "AvgTemp_C";
+    const yKey = currentUnit === "F" ? "AvgTemp_F_Yearly" : "AvgTemp_C_Yearly";
+
+    // Monthly filtered
+    const cleanMonthly = stateMonthly
+        .filter(d => d[mKey] != null && d[mKey] !== 0 && !isNaN(d[mKey]))
+        .map(d => ({ Year: d.Year, Month: d.Month, value: d[mKey] }));
+
+    // Yearly filtered
+    const cleanYearly = stateYearly
+        .filter(d => d[yKey] != null && d[yKey] !== 0 && !isNaN(d[yKey]));
+
+    // Regression slope from your drawLineChart
+    const slope = window.lastComputedSlope || null;
+    window.lastComputedSlope = slope;
+
+
+    // Update stats panel
+    updateStatsPanel(cleanMonthly, cleanYearly, slope);
+
     initAnalyticsSliders();
 
     // ------------------------------
@@ -293,7 +314,6 @@ Promise.all([
         endRow.style("display", displayMode === "delta" ? "grid" : "none");
     }
 });
-
 
 // ========================================================================
 // DRAW STATE MAP
@@ -500,7 +520,6 @@ function drawStateMap(stateFeature, data, month, year, stateCities) {
         );
 }
 
-
 // ========================================================================
 // LINE CHART
 // ========================================================================
@@ -677,3 +696,138 @@ function drawLineChart(data, mode) {
         .text(`Trend: ${slopeRounded} °${unit} ${slopePer}`);
 }
 
+// ========================================================================
+// STATE STATS PANEL
+// ========================================================================
+function updateStatsPanel(cleanMonthly, cleanYearly, slope) {
+    // ----- Helper for formatting temps -----
+    const fmt = (v) =>
+        (v == null || isNaN(v)) ? "—" : `${v.toFixed(2)} °${currentUnit}`;
+
+    const fmtY = (year) => year != null ? year : "—";
+    const fmtYM = (y, m) => (y && m) ? `${monthName(m)} ${y}` : "—";
+
+    // ================================
+    // 1. State Name
+    // ================================
+    document.getElementById("stat-state-name").textContent = selectedState;
+
+    // ================================
+    // 2. Average Temp (all time)
+    // ================================
+    const allTemps = cleanMonthly.map(d => d.value);
+    const avgAll = allTemps.length ? d3.mean(allTemps) : null;
+    document.getElementById("stat-avg-temp").textContent = fmt(avgAll);
+
+    // ================================
+    // 3. Rate of Change (slope)
+    // ================================
+    const slopeText = slope ? `${slope.toFixed(3)} °${currentUnit} / yr` : "—";
+    document.getElementById("stat-rate-change").textContent = slopeText;
+
+    // ================================
+    // 4. Hottest / Coldest YEAR
+    // ================================
+    const yearKey = currentUnit === "F" ? "AvgTemp_F_Yearly" : "AvgTemp_C_Yearly";
+
+    const validYearly = cleanYearly.filter(d => d[yearKey] != null);
+
+    let hottestYear = null, coldestYear = null;
+
+    if (validYearly.length) {
+        hottestYear = validYearly.reduce((a, b) =>
+            a[yearKey] > b[yearKey] ? a : b
+        );
+        coldestYear = validYearly.reduce((a, b) =>
+            a[yearKey] < b[yearKey] ? a : b
+        );
+    }
+
+    document.getElementById("stat-hottest-year").textContent =
+        hottestYear ? `${hottestYear.Year} (${fmt(hottestYear[yearKey])})` : "—";
+
+    document.getElementById("stat-coldest-year").textContent =
+        coldestYear ? `${coldestYear.Year} (${fmt(coldestYear[yearKey])})` : "—";
+
+    // ================================
+    // 5. Hottest / Coldest MONTH
+    // ================================
+    const monthKey = currentUnit === "F" ? "AvgTemp_F" : "AvgTemp_C";
+
+    const validMonthly = cleanMonthly.filter(d => d.value != null);
+
+    let hottestMonth = null, coldestMonth = null;
+
+    if (validMonthly.length) {
+        hottestMonth = validMonthly.reduce((a, b) =>
+            a.value > b.value ? a : b
+        );
+        coldestMonth = validMonthly.reduce((a, b) =>
+            a.value < b.value ? a : b
+        );
+    }
+
+    document.getElementById("stat-hottest-month").textContent =
+        hottestMonth ? fmtYM(hottestMonth.Year, hottestMonth.Month) +
+            ` (${fmt(hottestMonth.value)})` : "—";
+
+    document.getElementById("stat-coldest-month").textContent =
+        coldestMonth ? fmtYM(coldestMonth.Year, coldestMonth.Month) +
+            ` (${fmt(coldestMonth.value)})` : "—";
+
+    // ================================
+    // 6. Largest Yearly Fluctuation
+    // ================================
+    const fluctByYear = d3.rollups(
+        validMonthly,
+        rows => {
+            const temps = rows.map(r => r.value);
+            return d3.max(temps) - d3.min(temps);
+        },
+        d => d.Year
+    );
+
+    let biggestFluct = null;
+    if (fluctByYear.length) {
+        biggestFluct = fluctByYear.reduce((a, b) =>
+            a[1] > b[1] ? a : b
+        );
+    }
+
+    document.getElementById("stat-biggest-fluct").textContent =
+        biggestFluct ? `${biggestFluct[0]} (${fmt(biggestFluct[1])})` : "—";
+
+    // ================================
+    // 7. Data Coverage
+    // ================================
+    const years = validMonthly.map(d => d.Year);
+    const minY = d3.min(years);
+    const maxY = d3.max(years);
+
+    document.getElementById("stat-data-range").textContent =
+        (minY && maxY) ? `${minY}–${maxY}` : "—";
+
+    // ================================
+    // 8. Total Change Since First Year
+    // ================================
+    let firstTemp = null, lastTemp = null;
+
+    if (validYearly.length >= 2) {
+        const sorted = validYearly.sort((a, b) => a.Year - b.Year);
+        firstTemp = sorted[0][yearKey];
+        lastTemp = sorted[sorted.length - 1][yearKey];
+    }
+
+    const totalChange =
+        (firstTemp != null && lastTemp != null) ? (lastTemp - firstTemp) : null;
+
+    document.getElementById("stat-total-change").textContent = fmt(totalChange);
+
+    // ================================
+    // 9. Variability (Std Dev)
+    // ================================
+    const variability =
+        allTemps.length >= 2 ? d3.deviation(allTemps) : null;
+
+    document.getElementById("stat-variability").textContent = fmt(variability);
+}
