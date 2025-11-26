@@ -622,19 +622,49 @@ function drawLineChart(data, mode, compareData = null) {
 
     const parseIndex = d => (d.Year - START_YEAR) * 12 + (d.Month - 1);
 
+    
     // X scale + axis
     let x, xAxis;
 
+    // --- Compute combined extent for main + comparison data ---
+    let fullExtent;
+
+    if (mode === "yearly") {
+        let years = cleanData.map(d => d.Year);
+
+        if (compareData) {
+            const cleanCompare = compareData.filter(d =>
+                d[key] != null && !isNaN(d[key]) && d[key] !== 0
+            );
+            years = years.concat(cleanCompare.map(d => d.Year));
+        }
+
+        fullExtent = d3.extent(years);
+
+    } else {
+        let idxs = cleanData.map(parseIndex);
+
+        if (compareData) {
+            const cleanCompare = compareData.filter(d =>
+                d[key] != null && !isNaN(d[key]) && d[key] !== 0
+            );
+            idxs = idxs.concat(cleanCompare.map(parseIndex));
+        }
+
+        fullExtent = d3.extent(idxs);
+    }
+
+    // --- Build the scales using the combined extent ---
     if (mode === "yearly") {
         x = d3.scaleLinear()
-            .domain(d3.extent(cleanData, d => d.Year))
+            .domain(fullExtent)
             .range([0, widthLC]);
 
         xAxis = d3.axisBottom(x).tickFormat(d3.format("d"));
 
     } else {
         x = d3.scaleLinear()
-            .domain(d3.extent(cleanData, parseIndex))
+            .domain(fullExtent)
             .range([0, widthLC]);
 
         xAxis = d3.axisBottom(x)
@@ -645,6 +675,7 @@ function drawLineChart(data, mode, compareData = null) {
                 return `${monthName(m)} ${y}`;
             });
     }
+    
 
     // Y scale
     let allYValues = cleanData.map(d => d[key]);
