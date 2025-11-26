@@ -844,53 +844,52 @@ function drawLineChart(data, mode, compareData = null) {
         })
         .on("mousemove", (event) => {
             const [mx, my] = d3.pointer(event, g.node());
-
-            if (mx < 0 || mx > widthLC || my < 0 || my > heightLC) {
-                return;
-            }
+            if (mx < 0 || mx > widthLC || my < 0 || my > heightLC) return;
 
             const xRaw = x.invert(mx);
-            const closest = d3.least(mainPoints, p => Math.abs(p.xVal - xRaw));
-            if (!closest) return;
+            const i = Math.round(xRaw);
 
-            const cx = x(closest.xVal);
-            const cy = y(closest.value);
+            // Lookup based on mode
+            const mainPoint = (mode === "yearly")
+                ? mainPoints.find(d => d.Year === i)
+                : mainPoints.find(d => d.index === i);
 
-            hoverLine
-                .attr("x1", cx)
-                .attr("x2", cx);
+            const comparePoint = (mode === "yearly")
+                ? comparePoints.find(d => d.Year === i)
+                : comparePoints.find(d => d.index === i);
 
-            mainDot
-                .attr("cx", cx)
-                .attr("cy", cy)
-                .style("opacity", 1);
+            const cx = x(i);
+            hoverLine.attr("x1", cx).attr("x2", cx);
 
-            let compareInfo = null;
-            if (comparePoints.length) {
-                const cp = comparePoints.find(p =>
-                    p.Year === closest.Year &&
-                    (mode === "yearly" || p.Month === closest.Month)
-                );
-                if (cp) {
-                    compareDot
-                        .attr("cx", cx)
-                        .attr("cy", y(cp.value))
-                        .style("opacity", 1);
-                    compareInfo = cp;
-                } else {
-                    compareDot.style("opacity", 0);
-                }
+            // ---- Main dot ----
+            if (mainPoint) {
+                mainDot
+                    .attr("cx", cx)
+                    .attr("cy", y(mainPoint.value))
+                    .style("opacity", 1);
+            } else {
+                mainDot.style("opacity", 0);
+            }
+
+            // ---- Compare dot ----
+            if (comparePoint) {
+                compareDot
+                    .attr("cx", cx)
+                    .attr("cy", y(comparePoint.value))
+                    .style("opacity", 1);
             } else {
                 compareDot.style("opacity", 0);
             }
 
-            const dateLabel = mode === "yearly"
-                ? `${closest.Year}`
-                : `${monthName(closest.Month)} ${closest.Year}`;
+            // ---- Tooltip ----
+            const label = mode === "yearly"
+                ? `${i}`
+                : `${monthName((i % 12) + 1)} ${START_YEAR + Math.floor(i / 12)}`;
 
-            let html = `<strong>${dateLabel}</strong><br>${selectedState}: ${closest.value.toFixed(2)} °${unit}`;
-            if (compareState && compareInfo) {
-                html += `<br>${compareState}: ${compareInfo.value.toFixed(2)} °${unit}`;
+            let html = `<strong>${label}</strong>`;
+            html += `<br>${selectedState}: ${mainPoint ? mainPoint.value.toFixed(2) + " °" + unit : "—"}`;
+            if (compareState) {
+                html += `<br>${compareState}: ${comparePoint ? comparePoint.value.toFixed(2) + " °" + unit : "—"}`;
             }
 
             lineTooltip
@@ -899,7 +898,8 @@ function drawLineChart(data, mode, compareData = null) {
                 .style("left", (event.pageX + 12) + "px")
                 .style("top", (event.pageY - 28) + "px");
         });
-}
+    }
+ 
 
 // ========================================================================
 // STATE STATS PANEL
