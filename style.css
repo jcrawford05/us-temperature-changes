@@ -564,3 +564,13 @@ input:checked + .slider:before {
     padding: 4px 8px;
     color: var(--text);
 }
+
+/* default headers*/
+
+.section-title {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+    color: var(--accent) !important;
+    margin: 0 0 14px !important;
+    padding: 0 !important;
+}
