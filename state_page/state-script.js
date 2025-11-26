@@ -739,8 +739,46 @@ function drawLineChart(data, mode, compareData = null) {
                 value: d[cKey],
                 xVal: mode === "yearly" ? d.Year : parseIndex(d)
             }));
+            //add trend line for comparison state
+                if (comparePoints.length > 1) {
+                const tX = comparePoints.map(p => p.xVal);
+                const tY = comparePoints.map(p => p.value);
+
+                const n = tX.length;
+                const sumX = d3.sum(tX);
+                const sumY = d3.sum(tY);
+                const sumXY = d3.sum(tX.map((d,i) => d*tY[i]));
+                const sumXX = d3.sum(tX.map(d => d*d));
+
+                const slopeC = (n*sumXY - sumX*sumY) / (n*sumXX - sumX*sumX);
+                const interceptC = (sumY - slopeC*sumX)/n;
+
+                const xStartC = d3.min(tX);
+                const xEndC   = d3.max(tX);
+                const yStartC = slopeC*xStartC + interceptC;
+                const yEndC   = slopeC*xEndC + interceptC;
+
+                g.append("line")
+                    .attr("x1", x(xStartC))
+                    .attr("y1", y(yStartC))
+                    .attr("x2", x(xEndC))
+                    .attr("y2", y(yEndC))
+                    .attr("stroke", "var(--muted)")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "4 4")  // different style to distinguish
+                    .attr("opacity", 0.8);
+
+                // Optional: add slope label for comparison
+                g.append("text")
+                    .attr("x", 8)
+                    .attr("y", -25)
+                    .attr("fill", "var(--muted)")
+                    .attr("font-size", "12px")
+                    .text(`${compareState} Trend: ${slopeC.toFixed(3)} °${currentUnit} ${mode==="yearly"?"per year":"per month"}`);
+            }
         }
     }
+
 
     // Axes
     g.append("g")
