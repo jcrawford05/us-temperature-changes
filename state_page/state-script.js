@@ -205,7 +205,8 @@ Promise.all([
         const cleanYearly = stateYearly
             .filter(d => d[unitKeyYearly] != null && !isNaN(d[unitKeyYearly]) && d[unitKeyYearly] !== 0);
 
-        updateStatsPanel(cleanMonthly, cleanYearly, window.lastComputedSlope || null);
+        updateStatsPanel(cleanMonthly, cleanYearly, window.lastComputedSlope || null,
+            currentDataset === "yearly" ? "yearly" : "monthly");
     }
 
 });
@@ -461,7 +462,19 @@ function drawLineChart(data, mode, compareData = null) {
             .attr("stroke-width", 2)
             .attr("stroke-dasharray", "4 4")
             .attr("opacity", 0.8);
+
+        // Comparison slope label
+        const slopeCPer = mode === "yearly" ? "per year" : "per month";
+
+        g.append("text")
+            .attr("x", 8)
+            .attr("y", -25)
+            .attr("fill", "var(--muted)")
+            .attr("font-size", "12px")
+            .text(`${compareState} Trend: ${slopeC.toFixed(3)} °${currentUnit} ${slopeCPer}`);
+
     }
+
 
     // Axes
     g.append("g").attr("transform", `translate(0,${heightLC})`).call(xAxis);
@@ -588,7 +601,7 @@ function drawLineChart(data, mode, compareData = null) {
 // ========================================================================
 // STATE STATS PANEL
 // ========================================================================
-function updateStatsPanel(cleanMonthly, cleanYearly, slope) {
+function updateStatsPanel(cleanMonthly, cleanYearly, slope, mode) {
 
     const fmt = (v) => (v == null || isNaN(v)) ? "—" : `${v.toFixed(2)} °${currentUnit}`;
     const fmtYM = (y,m) => (y && m) ? `${monthName(m)} ${y}` : "—";
@@ -602,8 +615,10 @@ function updateStatsPanel(cleanMonthly, cleanYearly, slope) {
     document.getElementById("stat-avg-temp").textContent = fmt(avgAll);
 
     // Slope
+    let perUnit = mode === "yearly" ? "yr" : "mo";
     document.getElementById("stat-rate-change").textContent =
-        slope ? `${slope.toFixed(3)} °${currentUnit} / yr` : "—";
+        slope ? `${slope.toFixed(3)} °${currentUnit} / ${perUnit}` : "—";
+
 
     // Hottest/coldest year
     const yearKey = currentUnit === "F" ? "AvgTemp_F_Yearly" : "AvgTemp_C_Yearly";
