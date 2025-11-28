@@ -20,77 +20,49 @@
 </header>
 
 <main class="layout">
+
+    <!-- ================================
+         TOP CONTROLS (ROW FORMAT)
+    ================================ -->
     <section class="controls">
-        <!-- Month-Year / Year slider (auto-switch via Data View) -->
-        <label for="monthyear">
-            <span>Date:</span>
-            <strong id="monthyear-label">Jan-1800</strong>
-        </label>
-        <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
 
-        <!-- Unit Toggle -->
-        <div class="unit-toggle">
-            <label for="unit-toggle">
-                <span>Temperature Unit:</span>
-                <div class="toggle-container">
-                    <span class="unit-label-left">°F</span>
-                    <label class="switch">
-                        <input type="checkbox" id="unit-toggle" />
-                        <span class="slider"></span>
-                    </label>
-                    <span class="unit-label-right">°C</span>
-                </div>
-            </label>
-        </div>
+        <div class="toggle-row">
 
-        <!-- Data View Toggle -->
-        <div class="data-toggle">
-            <label for="data-toggle">
-                <span>Data View:</span>
-                <div class="toggle-container">
-                    <span class="data-label-left">Monthly</span>
-                    <label class="switch">
-                        <input type="checkbox" id="data-toggle" />
-                        <span class="slider"></span>
-                    </label>
-                    <span class="data-label-right">Yearly</span>
-                </div>
-            </label>
-        </div>
-
-        <div class="legend" id="legend"></div>
-
-        <!-- ANALYTICS (always open) -->
-        <section class="analytics">
-            <h3>Analytics</h3>
-
-            <div class="display-toggle">
-                <label for="display-toggle">
-                    <span>Display:</span>
+            <!-- Unit Toggle -->
+            <div class="unit-toggle">
+                <label for="unit-toggle">
+                    <span>Temperature Unit:</span>
                     <div class="toggle-container">
-                        <span class="display-label-left">Avg Temp</span>
+                        <span class="unit-label-left">°F</span>
                         <label class="switch">
-                            <input type="checkbox" id="display-toggle" />
+                            <input type="checkbox" id="unit-toggle" />
                             <span class="slider"></span>
                         </label>
-                        <span class="display-label-right">Δ Temp</span>
+                        <span class="unit-label-right">°C</span>
                     </div>
                 </label>
             </div>
 
-            <div class="range-row">
-                <span class="range-caption">Base:</span>
-                <input type="range" id="base-range" />
-                <strong id="base-label">Jan-1800</strong>
+            <!-- Monthly vs Yearly Toggle -->
+            <div class="data-toggle">
+                <label for="data-toggle">
+                    <span>Data View:</span>
+                    <div class="toggle-container">
+                        <span class="data-label-left">Monthly</span>
+                        <label class="switch">
+                            <input type="checkbox" id="data-toggle" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="data-label-right">Yearly</span>
+                    </div>
+                </label>
             </div>
 
-            <div class="range-row" id="end-row" style="display:none;">
-                <span class="range-caption">End:</span>
-                <input type="range" id="end-range" />
-                <strong id="end-label">Jan-2000</strong>
-            </div>
-        </section>
+        </div>
+
+        <div class="legend" id="legend"></div>
     </section>
+
 
     <!-- ================================
          TOP SECTION: MAP + STATS
@@ -100,8 +72,25 @@
         <!-- LEFT SIDE: MAP BLOCK -->
         <div class="state-map-block">
             <h2 id="state-title" class="section-title">Loading state data...</h2>
-            <svg id="stateview" width="980" height="600" role="img" aria-label="Focused state view"></svg>
+
+            <div class="map-container">
+                <svg id="stateview" width="980" height="600" role="img"
+                     aria-label="Focused state view"></svg>
+
+                <!-- MOVED SLIDER INTO MAP CONTAINER -->
+                <div class="map-slider-block">
+                    <div class="map-slider-block">
+
+                        <div class="map-slider-row">
+                            <span class="slider-label">Date:</span>
+                            <strong id="monthyear-label">Jan-1800</strong>
+                        </div>
+                        <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
+                    </div>
+                </div>
+            </div>
         </div>
+
 
         <!-- RIGHT SIDE: STATS BLOCK -->
         <div class="state-stats-block">
@@ -174,6 +163,9 @@
         </div>
     </section>
 
+    <!-- ======================================
+         TREND LINE CHART + COMPARISON
+    ====================================== -->
     <section class="detail">
         <h2 id="detail-title" class="section-title">Temperature Trend</h2>
         <div class="chart-toolbar">
@@ -185,7 +177,8 @@
             </label>
         </div>
 
-        <svg id="linechart" width="980" height="400" role="img" aria-label="State temperature trend"></svg>
+        <svg id="linechart" width="980" height="400"
+             role="img" aria-label="State temperature trend"></svg>
     </section>
 
 </main>
