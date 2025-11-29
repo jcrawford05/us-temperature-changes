@@ -125,6 +125,102 @@
         <svg id="map" width="980" height="600" role="img" aria-label="U.S. temperature map"></svg>
     </section>
 
+    <!-- ============================
+         MULTI STATE TREND SECTION
+    ============================= -->
+    <section class="multi-state-panel">
+        <h2 class="section-title">Multi State Temperature Trends</h2>
+
+        <!-- Filters -->
+        <div class="multi-state-controls">
+            <!-- Date range -->
+            <div class="filter-group">
+                <label for="trend-date-range" class="filter-label">Date range</label>
+                <select id="trend-date-range" class="filter-select">
+                    <option value="all" selected>All time</option>
+                    <option value="1">Last 1 year</option>
+                    <option value="5">Last 5 years</option>
+                    <option value="10">Last 10 years</option>
+                    <option value="100">Last 100 years</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <small id="trend-date-note" class="filter-note">
+                    Preset ranges are relative to the latest year in the dataset.
+                </small>
+                <small id="trend-date-lock-note" class="filter-note" style="display:none;">
+                    Date range is locked to the Base and End sliders in Analytics while Δ Temp is enabled.
+                </small>
+
+                <div id="trend-custom-range" class="custom-range-row">
+                    <input type="date" id="trend-start-date" class="date-input" />
+                    <span class="range-sep">to</span>
+                    <input type="date" id="trend-end-date" class="date-input" />
+                </div>
+            </div>
+
+            <!-- Included states -->
+            <div class="filter-group">
+                <label for="trend-state-mode" class="filter-label">Included states</label>
+                <select id="trend-state-mode" class="filter-select">
+                    <option value="top5" selected>Top 5 hottest</option>
+                    <option value="bottom5">Bottom 5 coldest</option>
+                    <option value="all">All states</option>
+                    <option value="region">By region</option>
+                    <option value="custom">Custom selection</option>
+                </select>
+
+                <div id="trend-region-block" class="sub-filter-row" style="display:none;">
+                    <label for="trend-region-select" class="sub-filter-label">Region</label>
+                    <select id="trend-region-select" class="filter-select">
+                        <option value="northeast">Northeast</option>
+                        <option value="midwest">Midwest</option>
+                        <option value="south" selected>South</option>
+                        <option value="west">West</option>
+                    </select>
+                </div>
+
+                <div id="trend-custom-states-block" class="sub-filter-row" style="display:none;">
+                    <label for="trend-custom-states" class="sub-filter-label">States</label>
+                    <select id="trend-custom-states" class="filter-select" multiple size="8"></select>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button id="trend-reset-btn" type="button" class="reset-button">Reset</button>
+            </div>
+        </div>
+
+        <!-- Line chart + legend -->
+        <div class="multi-state-chart">
+            <svg id="state-linechart"></svg>
+            <div id="state-linechart-loading" class="loading-overlay" style="display:none;">
+                Loading chart ...
+            </div>
+            <div id="state-linechart-legend" class="line-legend"></div>
+        </div>
+
+        <!-- Trends table -->
+        <div class="trend-table-wrapper">
+            <div id="trend-table-loading" class="loading-inline">
+                Loading trends ...
+            </div>
+            <table id="trend-table" class="trend-table">
+                <thead>
+                <tr>
+                    <th>State</th>
+                    <th>Trend (Δ Temp)</th>
+                    <th>Start value</th>
+                    <th>End value</th>
+                    <th>Period</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- rows filled in script.js -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="info">
         <h2>How to Use</h2>
         <p>Use Data View to switch monthly/yearly. In Analytics, enable Δ Temp to compare Base vs End dates.</p>
@@ -135,7 +231,7 @@
     <p>Data (prototype): Berkeley Earth (via Kaggle). Replace sample data with processed state/year/month averages for the final.</p>
 </footer>
 
-<script src="./script.js?v=4"></script>
+<script src="./script.js?v=5"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         // === MENU TOGGLE ===
@@ -190,6 +286,7 @@
         });
     });
 </script>
+
 <!-- ===== ABOUT MODAL ===== -->
 <div id="about-modal" class="modal">
     <div class="modal-content">

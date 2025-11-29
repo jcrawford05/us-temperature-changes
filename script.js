@@ -11,13 +11,14 @@ const maxToggle = d3.select("#max-toggle");
 const minToggle = d3.select("#min-toggle");
 let analyticsMode = "average"; // "average" | "delta" | "max" | "min"
 
-
-
 const projection = d3.geoAlbersUsa().scale(1200).translate([width / 2, height / 2]);
 const path = d3.geoPath().projection(projection);
 
 const colorScaleF = d3.scaleSequential().domain([0, 100]).interpolator(d3.interpolateTurbo);
 const colorScaleC = d3.scaleSequential().domain([-18, 38]).interpolator(d3.interpolateTurbo);
+
+// line chart color scale
+const lineColorScale = d3.scaleOrdinal(d3.schemeTableau10);
 
 let mapData, tempData = {};
 let currentDataset = "yearly";
@@ -44,6 +45,36 @@ const ymFromIdx = i => [START_YEAR + Math.floor(i / 12), (i % 12) + 1];
 function monName(m) { return new Date(2000, m - 1).toLocaleString("default", { month: "short" }); }
 function fmtLabel(y, m, isMonthly) { return isMonthly ? `${monName(m)}-${y}` : `${y}`; }
 
+// multi state globals
+let multiStateInitialized = false;
+let allStates = [];
+let trendDateRange, trendStartDateInput, trendEndDateInput, trendStateMode;
+let trendRegionBlock, trendRegionSelect, trendCustomStatesBlock, trendCustomStatesSelect;
+let trendResetBtn, trendTableBody, trendTableLoading, stateLinechartLoading;
+
+const REGION_STATES = {
+    northeast: [
+        "Maine", "New Hampshire", "Vermont", "Massachusetts", "Rhode Island",
+        "Connecticut", "New York", "New Jersey", "Pennsylvania"
+    ],
+    midwest: [
+        "Ohio", "Indiana", "Illinois", "Michigan", "Wisconsin",
+        "Minnesota", "Iowa", "Missouri", "North Dakota", "South Dakota",
+        "Nebraska", "Kansas"
+    ],
+    south: [
+        "Delaware", "Maryland", "District of Columbia", "Virginia", "West Virginia",
+        "North Carolina", "South Carolina", "Georgia", "Florida",
+        "Kentucky", "Tennessee", "Alabama", "Mississippi",
+        "Arkansas", "Louisiana", "Oklahoma", "Texas"
+    ],
+    west: [
+        "Montana", "Idaho", "Wyoming", "Colorado", "New Mexico",
+        "Arizona", "Utah", "Nevada",
+        "Washington", "Oregon", "California", "Alaska", "Hawaii"
+    ]
+};
+
 Promise.all([
     d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
     d3.csv("data/state_yearly_avg.csv"),
@@ -67,12 +98,18 @@ Promise.all([
 
     tempData = { yearly, monthly };
 
+    // build state list from data
+    allStates = Array.from(new Set(yearly.map(d => d.State))).sort(d3.ascending);
+
     drawMap();
     setSliderForDataset();
     updateMap(currentValue);
     buildLegend("average", currentUnit === "F" ? colorScaleF : colorScaleC);
     initAnalyticsSliders();
+    initMultiStateSection();   // set up multi state panel after everything else
 });
+
+// ==================== MAP RENDERING ====================
 
 function drawMap() {
     svg.selectAll(".state")
@@ -237,7 +274,6 @@ function updateMap(selected) {
 
         buildLegendDelta(deltaScale);
 
-        // Restore default tooltip (it already handles delta branch)
         // Custom Δ Temp tooltip
         svg.selectAll(".state")
             .on("mousemove", (event, d) => {
@@ -304,6 +340,8 @@ function handleMouseMove(event, d) {
 }
 function handleMouseLeave() { tooltip.style("opacity", 0); }
 
+// ==================== LEGEND ====================
+
 function buildLegend(mode = "average", colorScale) {
     const legend = d3.select("#legend");
     legend.selectAll("*").remove();
@@ -352,6 +390,8 @@ function buildLegend(mode = "average", colorScale) {
 
 function buildLegendDelta(scale) { buildLegend("delta", scale); }
 
+// ==================== MAIN CONTROLS ====================
+
 yearInput.on("input", function () {
     if (currentDataset === "yearly") {
         currentValue = +this.value;
@@ -367,17 +407,23 @@ yearInput.on("input", function () {
     updateMap(currentValue);
 });
 
-unitToggle.on("change", e => { currentUnit = e.target.checked ? "C" : "F"; updateMap(currentValue); });
+unitToggle.on("change", e => {
+    currentUnit = e.target.checked ? "C" : "F";
+    updateMap(currentValue);
+    if (multiStateInitialized) updateLineChartAndTable();
+});
 
 dataToggle.on("change", e => {
     currentDataset = e.target.checked ? "yearly" : "monthly";
     setSliderForDataset();
     initAnalyticsSliders();
     updateMap(currentValue);
+    if (multiStateInitialized) updateLineChartAndTable();
 });
 
 function setAnalyticsMode(mode) {
     analyticsMode = mode;
+    displayMode = mode === "delta" ? "delta" : "average";
 
     // Reset toggles
     displayToggle.property("checked", mode === "delta");
@@ -386,7 +432,7 @@ function setAnalyticsMode(mode) {
 
     // Determine if slider should be disabled
     const disableMainSlider = mode === "delta" || mode === "max" || mode === "min";
-    const mainSlider = document.querySelector("#year, #monthyear");
+    const mainSlider = document.querySelector("#year");
 
     if (mainSlider) {
         mainSlider.disabled = disableMainSlider;
@@ -401,6 +447,10 @@ function setAnalyticsMode(mode) {
     endRowEl.style.display = mode === "delta" ? "grid" : "none";
 
     updateMap(currentValue);
+    if (multiStateInitialized) {
+        updateDateFilterAvailability();
+        updateLineChartAndTable();
+    }
 }
 
 // Event listeners
@@ -425,6 +475,7 @@ baseRange.on("input", e => {
         endLabel.text(fmtLabel(endYear, endMonth, true));
     }
     updateMap(currentValue);
+    if (multiStateInitialized) updateLineChartAndTable();
 });
 
 endRange.on("input", e => {
@@ -440,6 +491,7 @@ endRange.on("input", e => {
         endLabel.text(fmtLabel(endYear, endMonth, true));
     }
     updateMap(currentValue);
+    if (multiStateInitialized) updateLineChartAndTable();
 });
 
 function setSliderForDataset() {
@@ -471,4 +523,517 @@ function initAnalyticsSliders() {
         endLabel.text(fmtLabel(endYear, endMonth, true));
     }
     endRow.style("display", displayMode === "delta" ? "grid" : "none");
+}
+
+// ==================== MULTI STATE SECTION ====================
+
+function initMultiStateSection() {
+    trendDateRange = d3.select("#trend-date-range");
+    trendStartDateInput = d3.select("#trend-start-date");
+    trendEndDateInput = d3.select("#trend-end-date");
+    trendStateMode = d3.select("#trend-state-mode");
+    trendRegionBlock = d3.select("#trend-region-block");
+    trendRegionSelect = d3.select("#trend-region-select");
+    trendCustomStatesBlock = d3.select("#trend-custom-states-block");
+    trendCustomStatesSelect = d3.select("#trend-custom-states");
+    trendResetBtn = d3.select("#trend-reset-btn");
+    trendTableBody = d3.select("#trend-table tbody");
+    trendTableLoading = d3.select("#trend-table-loading");
+    stateLinechartLoading = d3.select("#state-linechart-loading");
+
+    // populate custom state list
+    trendCustomStatesSelect.selectAll("option")
+        .data(allStates)
+        .join("option")
+        .attr("value", d => d)
+        .text(d => d);
+
+    // events
+    trendDateRange.on("change", () => {
+        updateDateFilterAvailability();
+        if (analyticsMode !== "delta") updateLineChartAndTable();
+    });
+
+    trendStartDateInput.on("change", () => {
+        if (analyticsMode !== "delta") updateLineChartAndTable();
+    });
+    trendEndDateInput.on("change", () => {
+        if (analyticsMode !== "delta") updateLineChartAndTable();
+    });
+
+    trendStateMode.on("change", () => {
+        const mode = trendStateMode.node().value;
+        trendRegionBlock.style("display", mode === "region" ? "flex" : "none");
+        trendCustomStatesBlock.style("display", mode === "custom" ? "flex" : "none");
+        updateLineChartAndTable();
+    });
+
+    trendRegionSelect.on("change", () => updateLineChartAndTable());
+    trendCustomStatesSelect.on("change", () => updateLineChartAndTable());
+
+    trendResetBtn.on("click", () => {
+        // reset filters
+        trendDateRange.property("value", "all");
+        trendStartDateInput.property("value", "");
+        trendEndDateInput.property("value", "");
+        trendStateMode.property("value", "top5");
+        trendRegionBlock.style("display", "none");
+        trendCustomStatesBlock.style("display", "none");
+        trendRegionSelect.property("value", "south");
+        trendCustomStatesSelect.selectAll("option").property("selected", false);
+
+        // reset analytics to average
+        setAnalyticsMode("average");
+    });
+
+    multiStateInitialized = true;
+    updateDateFilterAvailability();
+    updateLineChartAndTable();
+}
+
+function updateDateFilterAvailability() {
+    if (!multiStateInitialized) return;
+
+    const disable = analyticsMode === "delta";
+    const dateSelectNode = trendDateRange.node();
+    const startNode = trendStartDateInput.node();
+    const endNode = trendEndDateInput.node();
+    const customBlock = document.getElementById("trend-custom-range");
+    const lockNote = document.getElementById("trend-date-lock-note");
+
+    dateSelectNode.disabled = disable;
+    dateSelectNode.style.opacity = disable ? "0.5" : "1";
+
+    startNode.disabled = disable;
+    endNode.disabled = disable;
+    customBlock.style.opacity = disable ? "0.5" : "1";
+
+    lockNote.style.display = disable ? "block" : "none";
+}
+
+function getActiveDateRange() {
+    // delta uses base/end from analytics
+    if (analyticsMode === "delta") {
+        if (currentDataset === "yearly") {
+            const startYear = Math.min(baseYear, endYear);
+            const finalYear = Math.max(baseYear, endYear);
+            return { type: "yearly", startYear, endYear: finalYear };
+        } else {
+            const startIdx = Math.min(idxFromYM(baseYear, baseMonth), idxFromYM(endYear, endMonth));
+            const endIdx = Math.max(idxFromYM(baseYear, baseMonth), idxFromYM(endYear, endMonth));
+            return { type: "monthly", startIdx, endIdx };
+        }
+    }
+
+    const choice = trendDateRange.node().value;
+    const latestYear = END_YEAR;
+
+    if (currentDataset === "yearly") {
+        if (choice === "custom") {
+            const sVal = trendStartDateInput.node().value;
+            const eVal = trendEndDateInput.node().value;
+            if (!sVal || !eVal) {
+                return { type: "yearly", startYear: START_YEAR, endYear: latestYear };
+            }
+            let sYear = new Date(sVal).getFullYear();
+            let eYear = new Date(eVal).getFullYear();
+            if (isNaN(sYear) || isNaN(eYear)) {
+                return { type: "yearly", startYear: START_YEAR, endYear: latestYear };
+            }
+            if (sYear > eYear) [sYear, eYear] = [eYear, sYear];
+            sYear = Math.max(START_YEAR, sYear);
+            eYear = Math.min(latestYear, eYear);
+            return { type: "yearly", startYear: sYear, endYear: eYear };
+        }
+
+        if (choice === "all") {
+            return { type: "yearly", startYear: START_YEAR, endYear: latestYear };
+        }
+
+        const span = +choice;
+        const startYear = Math.max(START_YEAR, latestYear - span + 1);
+        return { type: "yearly", startYear, endYear: latestYear };
+    } else {
+        // monthly view
+        if (choice === "custom") {
+            const sVal = trendStartDateInput.node().value;
+            const eVal = trendEndDateInput.node().value;
+            if (!sVal || !eVal) {
+                const startIdx = idxFromYM(START_YEAR, 1);
+                const endIdx = idxFromYM(latestYear, 12);
+                return { type: "monthly", startIdx, endIdx };
+            }
+            let sDate = new Date(sVal);
+            let eDate = new Date(eVal);
+            if (sDate > eDate) [sDate, eDate] = [eDate, sDate];
+            let sIdx = idxFromYM(sDate.getFullYear(), sDate.getMonth() + 1);
+            let eIdx = idxFromYM(eDate.getFullYear(), eDate.getMonth() + 1);
+            const minIdx = idxFromYM(START_YEAR, 1);
+            const maxIdx = idxFromYM(latestYear, 12);
+            sIdx = Math.max(minIdx, sIdx);
+            eIdx = Math.min(maxIdx, eIdx);
+            return { type: "monthly", startIdx: sIdx, endIdx: eIdx };
+        }
+
+        const minIdx = idxFromYM(START_YEAR, 1);
+        const maxIdx = idxFromYM(latestYear, 12);
+
+        if (choice === "all") {
+            return { type: "monthly", startIdx: minIdx, endIdx: maxIdx };
+        }
+
+        const spanYears = +choice;
+        const startYear = Math.max(START_YEAR, latestYear - spanYears + 1);
+        const startIdx = idxFromYM(startYear, 1);
+        return { type: "monthly", startIdx, endIdx: maxIdx };
+    }
+}
+
+function getRegionStates(regionKey) {
+    return REGION_STATES[regionKey] ? REGION_STATES[regionKey].slice() : [];
+}
+
+function getSelectedStates(mode, range) {
+    if (mode === "all") {
+        return allStates.slice();
+    }
+
+    if (mode === "region") {
+        const regionKey = trendRegionSelect.node().value;
+        return getRegionStates(regionKey).filter(s => allStates.includes(s));
+    }
+
+    if (mode === "custom") {
+        const selected = [];
+        trendCustomStatesSelect.selectAll("option").each(function () {
+            if (this.selected) selected.push(this.value);
+        });
+        return selected;
+    }
+
+    // top or bottom by average temp over active range
+    const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
+    const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
+    const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
+    const key = currentUnit === "F" ? keyF : keyC;
+
+    const stats = allStates.map(state => {
+        let sum = 0, count = 0;
+
+        if (range.type === "yearly") {
+            dataset.forEach(d => {
+                if (d.State !== state) return;
+                if (d.Year < range.startYear || d.Year > range.endYear) return;
+                const v = d[key];
+                if (v == null || isNaN(v)) return;
+                sum += v;
+                count += 1;
+            });
+        } else {
+            dataset.forEach(d => {
+                if (d.State !== state) return;
+                const idx = idxFromYM(d.Year, d.Month);
+                if (idx < range.startIdx || idx > range.endIdx) return;
+                const v = d[key];
+                if (v == null || isNaN(v)) return;
+                sum += v;
+                count += 1;
+            });
+        }
+
+        return { state, avg: count ? sum / count : NaN };
+    }).filter(x => !isNaN(x.avg));
+
+    if (!stats.length) return [];
+
+    stats.sort((a, b) => a.avg - b.avg);
+
+    if (mode === "top5") {
+        return stats.slice(-5).map(x => x.state);
+    }
+
+    // bottom5
+    return stats.slice(0, 5).map(x => x.state);
+}
+
+function buildSeriesData(states, range) {
+    const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;
+    const keyF = currentDataset === "yearly" ? "AvgTemp_F_Yearly" : "AvgTemp_F";
+    const keyC = currentDataset === "yearly" ? "AvgTemp_C_Yearly" : "AvgTemp_C";
+    const key = currentUnit === "F" ? keyF : keyC;
+    const useDelta = analyticsMode === "delta";
+
+    const series = [];
+
+    states.forEach(state => {
+        const records = dataset.filter(d => d.State === state);
+        if (!records.length) return;
+
+        let baseline = null;
+        if (useDelta) {
+            let baseRec;
+            if (currentDataset === "yearly") {
+                baseRec = records.find(r => r.Year === baseYear);
+            } else {
+                baseRec = records.find(r => r.Year === baseYear && r.Month === baseMonth);
+            }
+            if (!baseRec) return;
+            baseline = baseRec[key];
+            if (baseline == null || isNaN(baseline)) return;
+        }
+
+        const points = [];
+        records.forEach(r => {
+            if (range.type === "yearly") {
+                if (r.Year < range.startYear || r.Year > range.endYear) return;
+            } else {
+                const idx = idxFromYM(r.Year, r.Month);
+                if (idx < range.startIdx || idx > range.endIdx) return;
+            }
+            const val = r[key];
+            if (val == null || isNaN(val)) return;
+
+            const date = currentDataset === "yearly"
+                ? new Date(r.Year, 0, 1)
+                : new Date(r.Year, r.Month - 1, 1);
+            const yVal = useDelta ? (val - baseline) : val;
+
+            points.push({ date, value: yVal, raw: val });
+        });
+
+        if (points.length) {
+            points.sort((a, b) => a.date - b.date);
+            series.push({ state, points });
+        }
+    });
+
+    return series;
+}
+
+function drawStateLineChart(series) {
+    const svgChart = d3.select("#state-linechart");
+    svgChart.selectAll("*").remove();
+
+    if (!series.length) return;
+
+    const margin = { top: 20, right: 40, bottom: 30, left: 50 };
+    const width = 900;
+    const height = 260;
+
+    svgChart
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+
+    const allPoints = series.flatMap(s => s.points);
+    const xExtent = d3.extent(allPoints, p => p.date);
+    const yExtent = d3.extent(allPoints, p => p.value);
+
+    const x = d3.scaleTime().domain(xExtent).range([margin.left, width - margin.right]);
+    const y = d3.scaleLinear().domain(yExtent).nice().range([height - margin.bottom, margin.top]);
+
+    const xAxis = d3.axisBottom(x).ticks(6).tickSizeOuter(0);
+    const yAxis = d3.axisLeft(y).ticks(6).tickSizeOuter(0);
+
+    const gx = svgChart.append("g")
+        .attr("class", "axis axis-x")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(xAxis);
+
+    gx.selectAll("text")
+        .attr("fill", "var(--muted)")
+        .attr("font-size", 12);
+
+    const gy = svgChart.append("g")
+        .attr("class", "axis axis-y")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(yAxis);
+
+    gy.selectAll("text")
+        .attr("fill", "var(--muted)")
+        .attr("font-size", 12);
+
+    gy.selectAll(".tick line").attr("stroke", "var(--border)");
+    gx.selectAll(".tick line").attr("stroke", "var(--border)");
+    svgChart.selectAll(".domain").attr("stroke", "var(--border)");
+
+    const line = d3.line()
+        .x(p => x(p.date))
+        .y(p => y(p.value));
+
+    series.forEach(s => {
+        svgChart.append("path")
+            .datum(s.points)
+            .attr("fill", "none")
+            .attr("stroke", lineColorScale(s.state))
+            .attr("stroke-width", 1.8)
+            .attr("opacity", 0.9)
+            .attr("d", line);
+    });
+
+    // hover interaction uses shared tooltip
+    const overlay = svgChart.append("rect")
+        .attr("class", "hover-capture")
+        .attr("x", margin.left)
+        .attr("y", margin.top)
+        .attr("width", width - margin.left - margin.right)
+        .attr("height", height - margin.top - margin.bottom)
+        .style("fill", "none")
+        .style("pointer-events", "all");
+
+    const focusLine = svgChart.append("line")
+        .attr("class", "focus-line")
+        .style("stroke", "var(--border)")
+        .style("stroke-width", 1)
+        .style("opacity", 0);
+
+    const timePoints = Array.from(new Set(allPoints.map(p => +p.date))).sort((a, b) => a - b);
+    const bisect = d3.bisector(d => d).left;
+
+    overlay.on("mousemove", (event) => {
+        const [mx] = d3.pointer(event);
+        const date = x.invert(mx);
+        const idx = bisect(timePoints, +date);
+        const clampedIdx = Math.max(0, Math.min(timePoints.length - 1, idx));
+        const targetTime = new Date(timePoints[clampedIdx]);
+
+        focusLine
+            .attr("x1", x(targetTime))
+            .attr("x2", x(targetTime))
+            .attr("y1", margin.top)
+            .attr("y2", height - margin.bottom)
+            .style("opacity", 1);
+
+        const rows = [];
+        series.forEach(s => {
+            if (!s.points.length) return;
+            let best = s.points[0];
+            let minDiff = Math.abs(+best.date - +targetTime);
+            s.points.forEach(p => {
+                const diff = Math.abs(+p.date - +targetTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    best = p;
+                }
+            });
+            rows.push({ state: s.state, value: best.value });
+        });
+
+        rows.sort((a, b) => b.value - a.value);
+
+        const unitLabel = `°${currentUnit}`;
+        const year = targetTime.getFullYear();
+        const monthLabel = currentDataset === "monthly" ? ` ${monName(targetTime.getMonth() + 1)}` : "";
+        let html = `<strong>Multi state trend</strong><br>${year}${monthLabel}<br>`;
+
+        rows.forEach(r => {
+            html += `<span style="display:inline-block;width:12px;height:12px;background:${lineColorScale(r.state)};margin-right:4px;border-radius:2px;"></span>${r.state}: ${r.value.toFixed(2)} ${unitLabel}<br>`;
+        });
+
+        tooltip.html(html)
+            .style("left", (event.pageX + 14) + "px")
+            .style("top", (event.pageY - 24) + "px")
+            .style("opacity", 1);
+    }).on("mouseleave", () => {
+        focusLine.style("opacity", 0);
+        tooltip.style("opacity", 0);
+    });
+}
+
+function updateTrendTable(series, range) {
+    trendTableBody.selectAll("*").remove();
+
+    if (!series.length) {
+        trendTableLoading.style("display", "none");
+        return;
+    }
+
+    const rows = [];
+    series.forEach(s => {
+        const pts = s.points;
+        if (!pts.length) return;
+        const first = pts[0];
+        const last = pts[pts.length - 1];
+
+        const startVal = analyticsMode === "delta" ? first.value : first.raw;
+        const endVal = analyticsMode === "delta" ? last.value : last.raw;
+        const trend = endVal - startVal;
+
+        rows.push({
+            state: s.state,
+            trend,
+            startVal,
+            endVal
+        });
+    });
+
+    rows.sort((a, b) => b.trend - a.trend);
+
+    let periodLabel;
+    if (range.type === "yearly") {
+        periodLabel = `${range.startYear} – ${range.endYear}`;
+    } else {
+        const [sy, sm] = ymFromIdx(range.startIdx);
+        const [ey, em] = ymFromIdx(range.endIdx);
+        periodLabel = `${fmtLabel(sy, sm, true)} → ${fmtLabel(ey, em, true)}`;
+    }
+
+    const unitLabel = `°${currentUnit}`;
+
+    const tr = trendTableBody.selectAll("tr")
+        .data(rows)
+        .join("tr");
+
+    tr.append("td").text(d => d.state);
+    tr.append("td").text(d => `${d.trend >= 0 ? "+" : ""}${d.trend.toFixed(2)} ${unitLabel}`);
+    tr.append("td").text(d => d.startVal != null ? d.startVal.toFixed(2) + " " + unitLabel : "NA");
+    tr.append("td").text(d => d.endVal != null ? d.endVal.toFixed(2) + " " + unitLabel : "NA");
+    tr.append("td").text(() => periodLabel);
+
+    trendTableLoading.style("display", "none");
+}
+
+function updateLineChartAndTable() {
+    if (!multiStateInitialized) return;
+
+    const range = getActiveDateRange();
+    const mode = trendStateMode.node().value;
+    const selectedStates = getSelectedStates(mode, range);
+
+    const showingAllStates = mode === "all";
+
+    if (showingAllStates) {
+        stateLinechartLoading.style("display", "block");
+    } else {
+        stateLinechartLoading.style("display", "none");
+    }
+    trendTableLoading.style("display", "block");
+
+    // slight delay so Loading text can show for heavy cases
+    const delay = showingAllStates ? 20 : 0;
+
+    setTimeout(() => {
+        const series = buildSeriesData(selectedStates, range);
+
+        drawStateLineChart(series);
+
+        // build legend
+        const legend = d3.select("#state-linechart-legend");
+        legend.selectAll("*").remove();
+        const legendItems = legend.selectAll(".legend-item")
+            .data(series, d => d.state)
+            .join("div")
+            .attr("class", "legend-item");
+
+        legendItems.append("span")
+            .attr("class", "legend-swatch")
+            .style("background-color", d => lineColorScale(d.state));
+
+        legendItems.append("span")
+            .attr("class", "legend-label")
+            .text(d => d.state);
+
+        updateTrendTable(series, range);
+
+        stateLinechartLoading.style("display", "none");
+    }, delay);
 }

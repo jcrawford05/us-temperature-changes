@@ -211,10 +211,22 @@ input:checked + .slider:before {
 .state:hover { stroke: var(--accent); stroke-width: 1.5px; }
 
 .tooltip {
-    position: absolute; pointer-events: none;
-    background: #111827cc; color: var(--text);
-    padding: 8px 10px; border: 1px solid var(--border);
-    border-radius: 8px; font-size: 12px; backdrop-filter: blur(4px);
+    position: absolute;
+    pointer-events: none;
+
+    /* Updated tint: slightly lighter, 25% more transparent */
+    background: rgba(17, 24, 39, 0.25);
+
+    color: var(--text);
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    backdrop-filter: blur(4px);
+
+    /* Fix stacking so tooltip sits above the line chart */
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .axis path, .axis line { stroke: #2a3557; }
@@ -629,4 +641,195 @@ input:checked + .slider:before {
     width: 80%;              /* slider itself 80% */
     max-width: 900px;
     margin: 0 auto;
+}
+
+/* ================================
+   MULTI STATE PANEL
+================================ */
+
+.multi-state-panel {
+    grid-column: 1 / -1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px 20px;
+}
+
+.multi-state-controls {
+    display: grid;
+    grid-template-columns: 2fr 2fr auto;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-label {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.filter-select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.filter-note {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.custom-range-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.custom-range-row .date-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.range-sep {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.sub-filter-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.sub-filter-label {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.filter-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+.reset-button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.reset-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.multi-state-chart {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    position: relative;
+}
+
+#state-linechart {
+    width: 100%;
+    height: 260px;
+    display: block;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(15, 23, 42, 0.85);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.loading-inline {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.line-legend {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: var(--accent);
+}
+
+.trend-table-wrapper {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+
+.trend-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.trend-table thead {
+    background: #111827;
+}
+
+.trend-table th,
+.trend-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.trend-table th {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.trend-table td {
+    color: var(--text);
+}
+
+/* keep line chart clean with no horizontal gridlines beyond axes */
+.axis-y .tick line {
+    stroke: var(--border);
 }
