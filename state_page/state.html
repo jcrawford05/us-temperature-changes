@@ -80,12 +80,16 @@
                 <!-- MOVED SLIDER INTO MAP CONTAINER -->
                 <div class="map-slider-block">
                     <div class="map-slider-block">
-
                         <div class="map-slider-row">
                             <span class="slider-label">Date:</span>
                             <strong id="monthyear-label">Jan-1800</strong>
                         </div>
-                        <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
+                        <div class="slider-with-play">
+                            <input type="range" id="monthyear" min="0" max="2651" step="1" value="0" />
+                            <button id="play-pause-btn" class="play-button" title="Play/Pause animation">
+                                <span id="play-icon">▶</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

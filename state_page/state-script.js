@@ -42,6 +42,10 @@ const END_YEAR   = 2013;
 // Comparison state (for line chart)
 let compareState = null;
 
+let isPlaying = false;
+let animationInterval = null;
+const ANIMATION_SPEED = 100; // milliseconds between steps
+
 // Tooltip for line chart hover
 const lineTooltip = d3.select("body")
     .append("div")
@@ -51,6 +55,13 @@ const lineTooltip = d3.select("body")
 // SVGs
 const svgState = d3.select("#stateview");
 const svgLine = d3.select("#linechart");
+
+let timelineIndicator = null;
+let timelineIndicatorDot = null;
+let lineChartGroup = null;
+let lineChartXScale = null;
+let lineChartHeight = null;
+let lineChartMargin = null;
 
 // Tooltip for city dots
 const cityTooltip = d3.select("body")
@@ -138,6 +149,7 @@ Promise.all([
     // Initial render
     drawStateMap(stateFeature, stateMonthly, currentMonth, currentYear, stateCities);
     drawLineChart(stateMonthly, "monthly");
+    updateTimelineIndicator(); // Initialize timeline indicator position
 
     // Stats (main state)
     updateMainStateStats();
@@ -173,8 +185,43 @@ Promise.all([
         );
 
         drawLineChart(mainData, mode, compareData);
+        updateTimelineIndicator(); // Update indicator position
 
         updateMainStateStats();
+    }
+
+    function updateTimelineIndicator() {
+        if (!timelineIndicator || !lineChartXScale) return;
+
+        let xVal;
+        if (currentDataset === "yearly") {
+            xVal = currentYear;
+        } else {
+            xVal = idxFromYM(currentYear, currentMonth);
+        }
+
+        const domain = lineChartXScale.domain();
+        const isInDomain = xVal >= domain[0] && xVal <= domain[1];
+        
+        if (isInDomain) {
+            const xPos = lineChartXScale(xVal);
+            timelineIndicator
+                .attr("x1", xPos)
+                .attr("x2", xPos)
+                .style("opacity", 1);
+            
+            const dot = lineChartGroup.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot.attr("cx", xPos)
+                   .attr("cy", 0)
+                   .style("opacity", 1);
+            }
+            timelineIndicator.style("opacity", 0);
+            const dot = lineChartGroup.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot.style("opacity", 0);
+            }
+        }
     }
 
     // ------------------------------
@@ -188,7 +235,62 @@ Promise.all([
     });
 
     unitToggle.on("change", e => { currentUnit = e.target.checked ? "C" : "F"; updateView(); });
-    dataToggle.on("change", e => { currentDataset = e.target.checked ? "yearly" : "monthly"; updateView(); });
+    dataToggle.on("change", e => { 
+        currentDataset = e.target.checked ? "yearly" : "monthly"; 
+        if (isPlaying) {
+            togglePlayPause();
+        }
+        updateView(); 
+    });
+
+    function togglePlayPause() {
+        isPlaying = !isPlaying;
+        const playBtn = document.getElementById("play-pause-btn");
+        const playIcon = document.getElementById("play-icon");
+
+        if (isPlaying) {
+            playBtn.classList.add("playing");
+            playIcon.textContent = "⏸";
+            startAnimation();
+        } else {
+            playBtn.classList.remove("playing");
+            playIcon.textContent = "▶";
+            stopAnimation();
+        }
+    }
+
+    function startAnimation() {
+        if (animationInterval) {
+            clearInterval(animationInterval);
+        }
+
+        animationInterval = setInterval(() => {
+            const slider = document.getElementById("monthyear");
+            const currentVal = +slider.value;
+            const min = +slider.min;
+            const max = +slider.max;
+
+            if (currentVal >= max) {
+                slider.value = min;
+                slider.dispatchEvent(new Event("input", { bubbles: true }));
+            } else {
+                slider.value = currentVal + 1;
+                slider.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+        }, ANIMATION_SPEED);
+    }
+
+    function stopAnimation() {
+        if (animationInterval) {
+            clearInterval(animationInterval);
+            animationInterval = null;
+        }
+    }
+
+    const playBtn = document.getElementById("play-pause-btn");
+    if (playBtn) {
+        playBtn.addEventListener("click", togglePlayPause);
+    }
 
 
     // ------------------------------
@@ -365,6 +467,10 @@ function drawLineChart(data, mode, compareData = null) {
     const widthLC = 980 - margin.left - margin.right;
     const heightLC = 300 - margin.top - margin.bottom;
     const g = svgLine.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    lineChartGroup = g;
+    lineChartMargin = margin;
+    lineChartHeight = heightLC;
 
     const parseIndex = d => (d.Year - START_YEAR) * 12 + (d.Month - 1);
 
@@ -389,6 +495,7 @@ function drawLineChart(data, mode, compareData = null) {
 
     // Scales
     const x = d3.scaleLinear().domain(fullExtent).range([0, widthLC]);
+    lineChartXScale = x; // Store for timeline indicator updates
 
     const xAxis = d3.axisBottom(x).ticks(10).tickFormat(i => {
         if (mode === "yearly") return i;
@@ -520,6 +627,27 @@ function drawLineChart(data, mode, compareData = null) {
         .attr("fill", "var(--muted)")
         .attr("font-size", "13px")
         .text(`${selectedState} Trend: ${slope.toFixed(3)} °${currentUnit} ${slopePer}`);
+
+    timelineIndicator = g.append("line")
+        .attr("class", "timeline-indicator")
+        .attr("stroke", "var(--accent)")
+        .attr("stroke-width", 3)
+        .attr("stroke-dasharray", "6 3")
+        .attr("y1", 0)
+        .attr("y2", heightLC)
+        .style("opacity", 1)
+        .style("pointer-events", "none")
+        .style("filter", "drop-shadow(0 0 3px var(--accent))");
+    
+    g.append("circle")
+        .attr("class", "timeline-indicator-dot")
+        .attr("r", 5)
+        .attr("fill", "var(--accent)")
+        .attr("stroke", "var(--card)")
+        .attr("stroke-width", 2)
+        .style("opacity", 1)
+        .style("pointer-events", "none")
+        .style("filter", "drop-shadow(0 0 4px var(--accent))");
 
     // Hover: crosshair, dots, tooltip
     const hoverLine = g.append("line")

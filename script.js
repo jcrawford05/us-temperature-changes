@@ -25,6 +25,13 @@ let currentDataset = "yearly";
 let currentUnit = "F";
 let currentValue = 2000;
 
+let nationalTimelineIndicator = null;
+let nationalTimelineIndicatorDot = null;
+let nationalLineChartXScale = null;
+let nationalLineChartMargin = null;
+let nationalLineChartHeight = null;
+let nationalLineChartSvg = null;
+
 const displayToggle = d3.select("#display-toggle");
 const baseRange = d3.select("#base-range");
 const endRange = d3.select("#end-range");
@@ -38,6 +45,10 @@ let endYear = 2000, endMonth = 1;
 
 const START_YEAR = 1800;
 const END_YEAR = 2012;
+
+let isPlaying = false;
+let animationInterval = null;
+const ANIMATION_SPEED = 100; // milliseconds between steps
 
 const idxFromYM = (y, m) => (y - START_YEAR) * 12 + (m - 1);
 const ymFromIdx = i => [START_YEAR + Math.floor(i / 12), (i % 12) + 1];
@@ -405,6 +416,7 @@ yearInput.on("input", function () {
         yearLabel.text(`${monName(month)}-${year}`);
     }
     updateMap(currentValue);
+    updateNationalTimelineIndicator(); // Update timeline indicator
 });
 
 unitToggle.on("change", e => {
@@ -414,6 +426,9 @@ unitToggle.on("change", e => {
 });
 
 dataToggle.on("change", e => {
+    if (isPlaying) {
+        togglePlayPause();
+    }
     currentDataset = e.target.checked ? "yearly" : "monthly";
     setSliderForDataset();
     initAnalyticsSliders();
@@ -438,6 +453,22 @@ function setAnalyticsMode(mode) {
         mainSlider.disabled = disableMainSlider;
         mainSlider.style.opacity = disableMainSlider ? "0.4" : "1.0";
         mainSlider.style.pointerEvents = disableMainSlider ? "none" : "auto";
+    }
+
+    const playBtn = document.getElementById("play-pause-btn");
+    if (playBtn) {
+        if (disableMainSlider) {
+            if (isPlaying) {
+                togglePlayPause();
+            }
+            playBtn.disabled = true;
+            playBtn.style.opacity = "0.4";
+            playBtn.style.cursor = "not-allowed";
+        } else {
+            playBtn.disabled = false;
+            playBtn.style.opacity = "1.0";
+            playBtn.style.cursor = "pointer";
+        }
     }
 
     // Only show Base/End sliders for Delta mode
@@ -523,6 +554,67 @@ function initAnalyticsSliders() {
         endLabel.text(fmtLabel(endYear, endMonth, true));
     }
     endRow.style("display", displayMode === "delta" ? "grid" : "none");
+}
+
+function togglePlayPause() {
+    if (analyticsMode === "delta" || analyticsMode === "max" || analyticsMode === "min") {
+        return;
+    }
+
+    isPlaying = !isPlaying;
+    const playBtn = document.getElementById("play-pause-btn");
+    const playIcon = document.getElementById("play-icon");
+
+    if (isPlaying) {
+        playBtn.classList.add("playing");
+        playIcon.textContent = "⏸";
+        startAnimation();
+    } else {
+        playBtn.classList.remove("playing");
+        playIcon.textContent = "▶";
+        stopAnimation();
+    }
+}
+
+function startAnimation() {
+    if (animationInterval) {
+        clearInterval(animationInterval);
+    }
+
+    animationInterval = setInterval(() => {
+        const currentVal = +slider.value;
+        const min = +slider.min;
+        const max = +slider.max;
+
+        if (currentVal >= max) {
+            slider.value = min;
+            slider.dispatchEvent(new Event("input", { bubbles: true }));
+        } else {
+            slider.value = currentVal + 1;
+            slider.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    }, ANIMATION_SPEED);
+}
+
+function stopAnimation() {
+    if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", () => {
+        const playBtn = document.getElementById("play-pause-btn");
+        if (playBtn) {
+            playBtn.addEventListener("click", togglePlayPause);
+        }
+    });
+} else {
+    const playBtn = document.getElementById("play-pause-btn");
+    if (playBtn) {
+        playBtn.addEventListener("click", togglePlayPause);
+    }
 }
 
 // ==================== MULTI STATE SECTION ====================
@@ -841,6 +933,7 @@ function buildSeriesData(states, range) {
 function drawStateLineChart(series) {
     const svgChart = d3.select("#state-linechart");
     svgChart.selectAll("*").remove();
+    nationalLineChartSvg = svgChart; // Store reference
 
     if (!series.length) return;
 
@@ -858,6 +951,10 @@ function drawStateLineChart(series) {
 
     const x = d3.scaleTime().domain(xExtent).range([margin.left, width - margin.right]);
     const y = d3.scaleLinear().domain(yExtent).nice().range([height - margin.bottom, margin.top]);
+    
+    nationalLineChartXScale = x;
+    nationalLineChartMargin = margin;
+    nationalLineChartHeight = height;
 
     const xAxis = d3.axisBottom(x).ticks(6).tickSizeOuter(0);
     const yAxis = d3.axisLeft(y).ticks(6).tickSizeOuter(0);
@@ -907,6 +1004,28 @@ function drawStateLineChart(series) {
         .attr("height", height - margin.top - margin.bottom)
         .style("fill", "none")
         .style("pointer-events", "all");
+
+    nationalTimelineIndicator = svgChart.append("line")
+        .attr("class", "timeline-indicator")
+        .attr("stroke", "var(--accent)")
+        .attr("stroke-width", 3)
+        .attr("stroke-dasharray", "6 3")
+        .attr("y1", margin.top)
+        .attr("y2", height - margin.bottom)
+        .style("opacity", 1)
+        .style("pointer-events", "none")
+        .style("filter", "drop-shadow(0 0 3px var(--accent))");
+    
+    svgChart.append("circle")
+        .attr("class", "timeline-indicator-dot")
+        .attr("r", 5)
+        .attr("fill", "var(--accent)")
+        .attr("stroke", "var(--card)")
+        .attr("stroke-width", 2)
+        .attr("cy", margin.top)
+        .style("opacity", 1)
+        .style("pointer-events", "none")
+        .style("filter", "drop-shadow(0 0 4px var(--accent))");
 
     const focusLine = svgChart.append("line")
         .attr("class", "focus-line")
@@ -965,6 +1084,46 @@ function drawStateLineChart(series) {
         focusLine.style("opacity", 0);
         tooltip.style("opacity", 0);
     });
+}
+
+function updateNationalTimelineIndicator() {
+    if (!nationalTimelineIndicator || !nationalLineChartXScale || !multiStateInitialized) return;
+
+    let currentDate;
+    if (currentDataset === "yearly") {
+        currentDate = new Date(+currentValue, 0, 1); // January 1st of the year
+    } else {
+        const [month, year] = String(currentValue).split("-").map(Number);
+        currentDate = new Date(year, month - 1, 1); // First day of the month
+    }
+
+    const domain = nationalLineChartXScale.domain();
+    const isInDomain = currentDate >= domain[0] && currentDate <= domain[1];
+    
+    if (isInDomain) {
+        const xPos = nationalLineChartXScale(currentDate);
+        nationalTimelineIndicator
+            .attr("x1", xPos)
+            .attr("x2", xPos)
+            .style("opacity", 1);
+        
+        if (nationalLineChartSvg) {
+            const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot.attr("cx", xPos)
+                   .attr("cy", nationalLineChartMargin.top)
+                   .style("opacity", 1);
+            }
+        }
+    } else {
+        nationalTimelineIndicator.style("opacity", 0);
+        if (nationalLineChartSvg) {
+            const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot.style("opacity", 0);
+            }
+        }
+    }
 }
 
 function updateTrendTable(series, range) {
@@ -1043,6 +1202,7 @@ function updateLineChartAndTable() {
         const series = buildSeriesData(selectedStates, range);
 
         drawStateLineChart(series);
+        updateNationalTimelineIndicator(); // Update indicator position
 
         // build legend
         const legend = d3.select("#state-linechart-legend");

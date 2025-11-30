@@ -27,11 +27,18 @@
 
 <main class="layout">
     <section class="controls">
-        <label for="year">
-            <span>Date:</span>
-            <strong id="year-label">2000</strong>
-        </label>
-        <input type="range" id="year" min="1800" max="2020" step="1" value="2000" />
+        <div class="date-control-row">
+            <label for="year">
+                <span>Date:</span>
+                <strong id="year-label">2000</strong>
+            </label>
+            <div class="slider-with-play">
+                <input type="range" id="year" min="1800" max="2020" step="1" value="2000" />
+                <button id="play-pause-btn" class="play-button" title="Play/Pause animation">
+                    <span id="play-icon">▶</span>
+                </button>
+            </div>
+        </div>
 
         <div class="unit-toggle">
             <label for="unit-toggle">
