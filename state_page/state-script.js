@@ -271,11 +271,15 @@ Promise.all([
             const min = +slider.min;
             const max = +slider.max;
 
+
+            const increment = currentDataset === "yearly" ? 12 : 1;
+
             if (currentVal >= max) {
                 slider.value = min;
                 slider.dispatchEvent(new Event("input", { bubbles: true }));
             } else {
-                slider.value = currentVal + 1;
+                const newVal = Math.min(currentVal + increment, max);
+                slider.value = newVal;
                 slider.dispatchEvent(new Event("input", { bubbles: true }));
             }
         }, ANIMATION_SPEED);

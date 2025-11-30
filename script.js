@@ -478,6 +478,22 @@ function setAnalyticsMode(mode) {
     endRowEl.style.display = mode === "delta" ? "grid" : "none";
 
     updateMap(currentValue);
+    
+        if (nationalTimelineIndicator) {
+            nationalTimelineIndicator
+                .style("opacity", 0)
+                .style("visibility", "hidden");
+        }
+        if (nationalLineChartSvg) {
+            const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot
+                    .style("opacity", 0)
+                    .style("visibility", "hidden");
+            }
+        }
+    }
+    
     if (multiStateInitialized) {
         updateDateFilterAvailability();
         updateLineChartAndTable();
@@ -1006,6 +1022,7 @@ function drawStateLineChart(series) {
         .style("fill", "none")
         .style("pointer-events", "all");
 
+    const shouldShowIndicator = analyticsMode !== "delta";
     nationalTimelineIndicator = svgChart.append("line")
         .attr("class", "timeline-indicator")
         .attr("stroke", "var(--accent)")
@@ -1013,9 +1030,10 @@ function drawStateLineChart(series) {
         .attr("stroke-dasharray", "6 3")
         .attr("y1", margin.top)
         .attr("y2", height - margin.bottom)
-        .style("opacity", 1)
+        .style("opacity", shouldShowIndicator ? 1 : 0)
+        .style("visibility", shouldShowIndicator ? "visible" : "hidden")
         .style("pointer-events", "none")
-        .style("filter", "drop-shadow(0 0 3px var(--accent))");
+        .style("filter", shouldShowIndicator ? "drop-shadow(0 0 3px var(--accent))" : "none");
     
     svgChart.append("circle")
         .attr("class", "timeline-indicator-dot")
@@ -1024,9 +1042,10 @@ function drawStateLineChart(series) {
         .attr("stroke", "var(--card)")
         .attr("stroke-width", 2)
         .attr("cy", margin.top)
-        .style("opacity", 1)
+        .style("opacity", shouldShowIndicator ? 1 : 0)
+        .style("visibility", shouldShowIndicator ? "visible" : "hidden")
         .style("pointer-events", "none")
-        .style("filter", "drop-shadow(0 0 4px var(--accent))");
+        .style("filter", shouldShowIndicator ? "drop-shadow(0 0 4px var(--accent))" : "none");
 
     const focusLine = svgChart.append("line")
         .attr("class", "focus-line")
@@ -1088,6 +1107,23 @@ function drawStateLineChart(series) {
 }
 
 function updateNationalTimelineIndicator() {
+    if (analyticsMode === "delta") {
+        if (nationalTimelineIndicator) {
+            nationalTimelineIndicator
+                .style("opacity", 0)
+                .style("visibility", "hidden");
+        }
+        if (nationalLineChartSvg) {
+            const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
+            if (!dot.empty()) {
+                dot
+                    .style("opacity", 0)
+                    .style("visibility", "hidden");
+            }
+        }
+        return;
+    }
+    
     if (!nationalTimelineIndicator || !nationalLineChartXScale || !multiStateInitialized) return;
 
     let currentDate;
@@ -1106,22 +1142,28 @@ function updateNationalTimelineIndicator() {
         nationalTimelineIndicator
             .attr("x1", xPos)
             .attr("x2", xPos)
-            .style("opacity", 1);
+            .style("opacity", 1)
+            .style("visibility", "visible");
         
         if (nationalLineChartSvg) {
             const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
             if (!dot.empty()) {
                 dot.attr("cx", xPos)
                    .attr("cy", nationalLineChartMargin.top)
-                   .style("opacity", 1);
+                   .style("opacity", 1)
+                   .style("visibility", "visible");
             }
         }
     } else {
-        nationalTimelineIndicator.style("opacity", 0);
+        nationalTimelineIndicator
+            .style("opacity", 0)
+            .style("visibility", "hidden");
         if (nationalLineChartSvg) {
             const dot = nationalLineChartSvg.select(".timeline-indicator-dot");
             if (!dot.empty()) {
-                dot.style("opacity", 0);
+                dot
+                    .style("opacity", 0)
+                    .style("visibility", "hidden");
             }
         }
     }
