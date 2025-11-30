@@ -582,6 +582,7 @@ function startAnimation() {
     }
 
     animationInterval = setInterval(() => {
+        const slider = document.getElementById("year");
         const currentVal = +slider.value;
         const min = +slider.min;
         const max = +slider.max;

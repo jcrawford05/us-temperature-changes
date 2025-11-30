@@ -216,6 +216,7 @@ Promise.all([
                    .attr("cy", 0)
                    .style("opacity", 1);
             }
+        } else {
             timelineIndicator.style("opacity", 0);
             const dot = lineChartGroup.select(".timeline-indicator-dot");
             if (!dot.empty()) {
