@@ -479,6 +479,7 @@ function setAnalyticsMode(mode) {
 
     updateMap(currentValue);
     
+    if (mode === "delta") {
         if (nationalTimelineIndicator) {
             nationalTimelineIndicator
                 .style("opacity", 0)
@@ -1188,9 +1189,26 @@ function updateTrendTable(series, range) {
         const endVal = analyticsMode === "delta" ? last.value : last.raw;
         const trend = endVal - startVal;
 
+        let numYears;
+        if (range.type === "yearly") {
+            numYears = range.endYear - range.startYear;
+        } else {
+            // For monthly, calculate years from indices
+            const [sy, sm] = ymFromIdx(range.startIdx);
+            const [ey, em] = ymFromIdx(range.endIdx);
+            // Calculate fractional years
+            const startDate = new Date(sy, sm - 1, 1);
+            const endDate = new Date(ey, em - 1, 1);
+            const diffMs = endDate - startDate;
+            numYears = diffMs / (1000 * 60 * 60 * 24 * 365.25); // Account for leap years
+        }
+        
+        const deltaPerYear = numYears > 0 ? trend / numYears : 0;
+
         rows.push({
             state: s.state,
             trend,
+            deltaPerYear,
             startVal,
             endVal
         });
@@ -1215,6 +1233,10 @@ function updateTrendTable(series, range) {
 
     tr.append("td").text(d => d.state);
     tr.append("td").text(d => `${d.trend >= 0 ? "+" : ""}${d.trend.toFixed(2)} ${unitLabel}`);
+    tr.append("td").text(d => {
+        if (d.deltaPerYear === 0 || isNaN(d.deltaPerYear)) return "—";
+        return `${d.deltaPerYear >= 0 ? "+" : ""}${d.deltaPerYear.toFixed(3)} ${unitLabel}/yr`;
+    });
     tr.append("td").text(d => d.startVal != null ? d.startVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(d => d.endVal != null ? d.endVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(() => periodLabel);
