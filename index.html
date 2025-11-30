@@ -11,7 +11,7 @@
 <body>
 <header class="app-header">
     <div class="header-left">
-        <h1>U.S. Temperature Changes</h1>
+        <h1>U.S. Temperature Changes: 1800-2012</h1>
         <p class="sub">DS 4630 / CS 5630 — Final Project</p>
     </div>
 
@@ -95,7 +95,7 @@
             <div class="extra-analytics">
                 <div class="max-toggle">
                     <label for="max-toggle">
-                        <span>Max Temp:</span>
+                        <span>Max Average Temp:</span>
                         <div class="toggle-container">
                             <label class="switch">
                                 <input type="checkbox" id="max-toggle" />
@@ -107,7 +107,7 @@
 
                 <div class="min-toggle">
                     <label for="min-toggle">
-                        <span>Min Temp:</span>
+                        <span>Min Average Temp:</span>
                         <div class="toggle-container">
                             <label class="switch">
                                 <input type="checkbox" id="min-toggle" />
@@ -241,6 +241,24 @@
                 dropdown.classList.remove('show');
             }
         });
+
+
+        // limit custom date range to data set
+        const startInput = document.getElementById("trend-start-date");
+        const endInput = document.getElementById("trend-end-date");
+
+        if (startInput && endInput) {
+            startInput.min = "1800-01-01";
+            startInput.max = "2012-12-31";
+
+            endInput.min = "1800-01-01";
+            endInput.max = "2012-12-31";
+
+            // Optional: set default values to dataset bounds
+            startInput.value = "1800-01-01";
+            endInput.value = "2012-12-31";
+        }
+ 
 
         // === MODAL HANDLERS ===
         const aboutLink = document.getElementById('about-link');

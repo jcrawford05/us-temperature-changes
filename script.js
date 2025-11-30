@@ -541,6 +541,11 @@ function initMultiStateSection() {
     trendTableLoading = d3.select("#trend-table-loading");
     stateLinechartLoading = d3.select("#state-linechart-loading");
 
+
+    // hide custom date row by default
+    d3.select("#trend-custom-range").style("display", "none");
+
+
     // populate custom state list
     trendCustomStatesSelect.selectAll("option")
         .data(allStates)
@@ -550,9 +555,19 @@ function initMultiStateSection() {
 
     // events
     trendDateRange.on("change", () => {
+        const choice = trendDateRange.node().value;
+        const customBlock = d3.select("#trend-custom-range");
+
+        if (choice === "custom") {
+            customBlock.style("display", "flex");   // or "block" depending on desired layout
+        } else {
+            customBlock.style("display", "none");
+        }
+
         updateDateFilterAvailability();
         if (analyticsMode !== "delta") updateLineChartAndTable();
     });
+  
 
     trendStartDateInput.on("change", () => {
         if (analyticsMode !== "delta") updateLineChartAndTable();
