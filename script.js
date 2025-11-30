@@ -1212,12 +1212,12 @@ function updateTrendTable(series, range) {
             slope = (n * sumXY - sumX * sumY) / denominator;
         }
 
-        const deltaPerYear = currentDataset === "yearly" ? slope : slope * 12;
+        const trendSlope = slope;
 
         rows.push({
             state: s.state,
             trend,
-            deltaPerYear,
+            trendSlope,
             startVal,
             endVal
         });
@@ -1240,11 +1240,14 @@ function updateTrendTable(series, range) {
         .data(rows)
         .join("tr");
 
+    const trendUnit = currentDataset === "yearly" ? "yr" : "mo";
+    const trendLabel = currentDataset === "yearly" ? `${unitLabel}/yr` : `${unitLabel}/mo`;
+    
     tr.append("td").text(d => d.state);
     tr.append("td").text(d => `${d.trend >= 0 ? "+" : ""}${d.trend.toFixed(2)} ${unitLabel}`);
     tr.append("td").text(d => {
-        if (d.deltaPerYear === 0 || isNaN(d.deltaPerYear)) return "—";
-        return `${d.deltaPerYear >= 0 ? "+" : ""}${d.deltaPerYear.toFixed(3)} ${unitLabel}/yr`;
+        if (d.trendSlope === 0 || isNaN(d.trendSlope)) return "—";
+        return `${d.trendSlope >= 0 ? "+" : ""}${d.trendSlope.toFixed(3)} ${trendLabel}`;
     });
     tr.append("td").text(d => d.startVal != null ? d.startVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(d => d.endVal != null ? d.endVal.toFixed(2) + " " + unitLabel : "NA");
