@@ -266,10 +266,9 @@ function updateMap(selected) {
             if (b != null && e != null && !isNaN(b) && !isNaN(e)) deltas.push(e - b);
         });
 
-        const [dmin, dmax] = deltas.length ? d3.extent(deltas) : [-5, 5];
-        const maxAbs = Math.max(Math.abs(dmin), Math.abs(dmax));
+        const fixedMax = currentUnit === "F" ? 5 : (5 * 5/9); 
         const deltaScale = d3.scaleSequential()
-            .domain([maxAbs, -maxAbs]) // flipped: blue=cooler (neg), red=warmer (pos)
+            .domain([fixedMax, -fixedMax]) 
             .interpolator(d3.interpolateRdBu)
             .clamp(true);
 
@@ -1257,6 +1256,44 @@ function updateTrendTable(series, range) {
     tr.append("td").text(d => d.startVal != null ? d.startVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(d => d.endVal != null ? d.endVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(d => d.periodLabel);
+
+    const validTrends = rows.filter(d => d.trend != null && !isNaN(d.trend));
+    const validSlopes = rows.filter(d => d.trendSlope != null && !isNaN(d.trendSlope) && d.trendSlope !== 0);
+    const validStarts = rows.filter(d => d.startVal != null && !isNaN(d.startVal));
+    const validEnds = rows.filter(d => d.endVal != null && !isNaN(d.endVal));
+
+    const avgTrend = validTrends.length > 0 ? d3.mean(validTrends, d => d.trend) : null;
+    const avgSlope = validSlopes.length > 0 ? d3.mean(validSlopes, d => d.trendSlope) : null;
+    const avgStart = validStarts.length > 0 ? d3.mean(validStarts, d => d.startVal) : null;
+    const avgEnd = validEnds.length > 0 ? d3.mean(validEnds, d => d.endVal) : null;
+
+    const avgRow = trendTableBody.append("tr")
+        .attr("class", "trend-table-average");
+
+    avgRow.append("td")
+        .text("Average")
+        .style("font-weight", "600")
+        .style("border-top", "2px solid var(--border)");
+    
+    avgRow.append("td")
+        .text(avgTrend != null ? `${avgTrend >= 0 ? "+" : ""}${avgTrend.toFixed(2)} ${unitLabel}` : "—")
+        .style("border-top", "2px solid var(--border)");
+    
+    avgRow.append("td")
+        .text(avgSlope != null ? `${avgSlope >= 0 ? "+" : ""}${avgSlope.toFixed(3)} ${trendLabel}` : "—")
+        .style("border-top", "2px solid var(--border)");
+    
+    avgRow.append("td")
+        .text(avgStart != null ? `${avgStart.toFixed(2)} ${unitLabel}` : "—")
+        .style("border-top", "2px solid var(--border)");
+    
+    avgRow.append("td")
+        .text(avgEnd != null ? `${avgEnd.toFixed(2)} ${unitLabel}` : "—")
+        .style("border-top", "2px solid var(--border)");
+    
+    avgRow.append("td")
+        .text("—")
+        .style("border-top", "2px solid var(--border)");
 
     trendTableLoading.style("display", "none");
 }

@@ -890,6 +890,15 @@ input:checked + .slider:before {
     color: var(--text);
 }
 
+.trend-table-average {
+    background: rgba(34, 211, 238, 0.1);
+}
+
+.trend-table-average td {
+    font-weight: 500;
+    color: var(--accent);
+}
+
 /* keep line chart clean with no horizontal gridlines beyond axes */
 .axis-y .tick line {
     stroke: var(--border);
