@@ -30,6 +30,67 @@ html, body {
 .controls input[type="range"] { width: 320px; }
 .legend { height: 36px; display: flex; align-items: center; gap: 8px; }
 
+.date-control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.slider-with-play {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.slider-with-play input[type="range"] {
+    flex: 1;
+}
+
+.play-button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.play-button:hover {
+    background: var(--border);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.play-button.playing {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+}
+
+.play-button.playing:hover {
+    background: #0ea5e9;
+    border-color: #0ea5e9;
+}
+
+.play-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+}
+
+.play-button:disabled:hover {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+}
+
 .unit-toggle .toggle-container {
     display: flex;
     align-items: center;
@@ -832,6 +893,27 @@ input:checked + .slider:before {
 /* keep line chart clean with no horizontal gridlines beyond axes */
 .axis-y .tick line {
     stroke: var(--border);
+}
+
+/* Timeline indicator styling */
+.timeline-indicator {
+    stroke: var(--accent) !important;
+    stroke-width: 3px !important;
+    stroke-dasharray: 6 3 !important;
+    opacity: 1 !important;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(0 0 3px var(--accent));
+}
+
+.timeline-indicator-dot {
+    fill: var(--accent) !important;
+    stroke: var(--card) !important;
+    stroke-width: 2px !important;
+    opacity: 1 !important;
+    pointer-events: none;
+    z-index: 11;
+    filter: drop-shadow(0 0 4px var(--accent));
 }
 
 .scrollable-dropdown {
