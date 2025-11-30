@@ -546,12 +546,25 @@ function initMultiStateSection() {
     d3.select("#trend-custom-range").style("display", "none");
 
 
-    // populate custom state list
-    trendCustomStatesSelect.selectAll("option")
+    // // populate custom state list
+    // select the container
+    trendCustomStatesSelect = d3.select("#trend-custom-states");
+
+    // create checkboxes
+    trendCustomStatesSelect.selectAll("div")
         .data(allStates)
-        .join("option")
-        .attr("value", d => d)
-        .text(d => d);
+        .join("div")
+        .attr("class", "checkbox-item")
+        .html(d => `
+            <label>
+                <input type="checkbox" value="${d}" /> ${d}
+            </label>
+        `);
+
+    // fire update when any checkbox changes
+    trendCustomStatesSelect.selectAll("input[type='checkbox']")
+        .on("change", () => updateLineChartAndTable());
+
 
     // events
     trendDateRange.on("change", () => {
@@ -719,12 +732,12 @@ function getSelectedStates(mode, range) {
     }
 
     if (mode === "custom") {
-        const selected = [];
-        trendCustomStatesSelect.selectAll("option").each(function () {
-            if (this.selected) selected.push(this.value);
-        });
-        return selected;
-    }
+    const selected = [];
+    trendCustomStatesSelect.selectAll("input[type='checkbox']").each(function() {
+        if (this.checked) selected.push(this.value);
+    });
+    return selected;
+}
 
     // top or bottom by average temp over active range
     const dataset = currentDataset === "yearly" ? tempData.yearly : tempData.monthly;

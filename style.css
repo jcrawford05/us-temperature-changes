@@ -833,3 +833,17 @@ input:checked + .slider:before {
 .axis-y .tick line {
     stroke: var(--border);
 }
+
+.scrollable-dropdown {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-height: 200px;      /* height of dropdown window */
+    overflow-y: auto;       /* scrollable if content exceeds height */
+    padding: 5px;
+    width: 200px;           /* adjust to match your layout */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.scrollable-dropdown .checkbox-item {
+    margin-bottom: 4px;
+}
