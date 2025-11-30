@@ -936,7 +936,7 @@ function buildSeriesData(states, range) {
                 : new Date(r.Year, r.Month - 1, 1);
             const yVal = useDelta ? (val - baseline) : val;
 
-            points.push({ date, value: yVal, raw: val });
+            points.push({ date, value: yVal, raw: val, Year: r.Year, Month: r.Month });
         });
 
         if (points.length) {
@@ -1189,21 +1189,30 @@ function updateTrendTable(series, range) {
         const endVal = analyticsMode === "delta" ? last.value : last.raw;
         const trend = endVal - startVal;
 
-        let numYears;
-        if (range.type === "yearly") {
-            numYears = range.endYear - range.startYear;
-        } else {
-            // For monthly, calculate years from indices
-            const [sy, sm] = ymFromIdx(range.startIdx);
-            const [ey, em] = ymFromIdx(range.endIdx);
-            // Calculate fractional years
-            const startDate = new Date(sy, sm - 1, 1);
-            const endDate = new Date(ey, em - 1, 1);
-            const diffMs = endDate - startDate;
-            numYears = diffMs / (1000 * 60 * 60 * 24 * 365.25); // Account for leap years
-        }
+
+        const parseIndex = d => (d.Year - START_YEAR) * 12 + (d.Month - 1);
+        const xVals = pts.map(p => {
+            if (currentDataset === "yearly") {
+                return p.Year;
+            } else {
+                return parseIndex(p);
+            }
+        });
+        const yVals = pts.map(p => p.value);
+
+        const n = xVals.length;
+        const sumX = d3.sum(xVals);
+        const sumY = d3.sum(yVals);
+        const sumXY = d3.sum(xVals.map((x, i) => x * yVals[i]));
+        const sumXX = d3.sum(xVals.map(x => x * x));
         
-        const deltaPerYear = numYears > 0 ? trend / numYears : 0;
+        let slope = 0;
+        const denominator = n * sumXX - sumX * sumX;
+        if (denominator !== 0) {
+            slope = (n * sumXY - sumX * sumY) / denominator;
+        }
+
+        const deltaPerYear = currentDataset === "yearly" ? slope : slope * 12;
 
         rows.push({
             state: s.state,
