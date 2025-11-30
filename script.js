@@ -1214,25 +1214,30 @@ function updateTrendTable(series, range) {
 
         const trendSlope = slope;
 
+        let statePeriodLabel;
+        if (currentDataset === "yearly") {
+            const startYear = first.Year;
+            const endYear = last.Year;
+            statePeriodLabel = `${startYear} – ${endYear}`;
+        } else {
+            const startYear = first.Year;
+            const startMonth = first.Month;
+            const endYear = last.Year;
+            const endMonth = last.Month;
+            statePeriodLabel = `${fmtLabel(startYear, startMonth, true)} → ${fmtLabel(endYear, endMonth, true)}`;
+        }
+
         rows.push({
             state: s.state,
             trend,
             trendSlope,
             startVal,
-            endVal
+            endVal,
+            periodLabel: statePeriodLabel
         });
     });
 
     rows.sort((a, b) => b.trend - a.trend);
-
-    let periodLabel;
-    if (range.type === "yearly") {
-        periodLabel = `${range.startYear} – ${range.endYear}`;
-    } else {
-        const [sy, sm] = ymFromIdx(range.startIdx);
-        const [ey, em] = ymFromIdx(range.endIdx);
-        periodLabel = `${fmtLabel(sy, sm, true)} → ${fmtLabel(ey, em, true)}`;
-    }
 
     const unitLabel = `°${currentUnit}`;
 
@@ -1251,7 +1256,7 @@ function updateTrendTable(series, range) {
     });
     tr.append("td").text(d => d.startVal != null ? d.startVal.toFixed(2) + " " + unitLabel : "NA");
     tr.append("td").text(d => d.endVal != null ? d.endVal.toFixed(2) + " " + unitLabel : "NA");
-    tr.append("td").text(() => periodLabel);
+    tr.append("td").text(d => d.periodLabel);
 
     trendTableLoading.style("display", "none");
 }
