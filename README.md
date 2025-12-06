@@ -1,15 +1,16 @@
-How to Run
+## How to Run
 
-Local Server Method:
-Start a local server on your machine, running the index.html file to start the program. 
+### Local Server Method
+Start a local server on your machine, then open `index.html` through that server to launch the project.  
+This allows the browser to load all CSV data files correctly.
 
-GitHub Pages Method:
-Open the hosted build directly in your browser using this link:
-https://dataviscourse2025.github.io/final-project-global-temperature-changes/
+### GitHub Pages Method
+Open the hosted build directly in your browser using this link:  
+https://dataviscourse2025.github.io/final-project-global-temperature-changes/  
+The site loads immediately and runs from the latest committed release.
 
-
-The site loads immediately and runs from the latest commit in the repository, which will be the released version.
-
+---
+```
 final-project-global-temperature-changes/
 │
 ├── data/
@@ -31,3 +32,4 @@ final-project-global-temperature-changes/
 ├── index.html
 ├── script.js
 └── style.css
+```
