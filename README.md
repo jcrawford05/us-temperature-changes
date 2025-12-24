@@ -126,8 +126,8 @@ us-temperature-changes/
 
 **Primary Author**
 
-*James Crawford
-*Katelyn Abraham
+* James Crawford
+* Katelyn Abraham
 
 **Contributors**
 
